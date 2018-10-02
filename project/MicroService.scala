@@ -30,6 +30,9 @@ trait MicroService {
   import uk.gov.hmrc._
   import DefaultBuildSettings._
   import uk.gov.hmrc.SbtAutoBuildPlugin
+  import uk.gov.hmrc.versioning.SbtGitVersioning
+  import uk.gov.hmrc.SbtArtifactory
+  import uk.gov.hmrc.versioning.SbtGitVersioning.autoImport.majorVersion
 
   import TestPhases._
 
@@ -51,10 +54,10 @@ trait MicroService {
 
   lazy val microservice = Project(appName, file("."))
     .enablePlugins(plugins : _*)
-    .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning)
-    .enablePlugins(SbtDistributablesPlugin)
+    .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning, SbtArtifactory, SbtDistributablesPlugin)
     .settings(playSettings : _*)
     .settings(scalaSettings: _*)
+    .settings(majorVersion := 2)
     .settings(publishingSettings: _*)
     .settings(scoverageSettings: _*)
     .settings(defaultSettings(): _*)
@@ -75,7 +78,7 @@ trait MicroService {
       Keys.fork in IntegrationTest := false,
       unmanagedSourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest)(base => Seq(base / "it")),
       addTestReportOption(IntegrationTest, "int-test-reports"),
-      testGrouping in IntegrationTest := oneForkedJvmPerTest((definedTests in IntegrationTest).value),
+      testGrouping in IntegrationTest := TestPhases.oneForkedJvmPerTest((definedTests in IntegrationTest).value),
       parallelExecution in IntegrationTest := false)
     .disablePlugins(sbt.plugins.JUnitXmlReportPlugin)
     .settings(
