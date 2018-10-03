@@ -39,10 +39,12 @@ private object AppDependencies {
   private val reactiveMongoTest             = "4.1.0-play-25"
   private val mockitoCoreVersion            = "1.9.5"
   private val hmrcTestVersion               = "3.1.0"
-
+  private val reactiveMongoVer = "0.16.0"
+  
   val compile = Seq(
     "uk.gov.hmrc" %% "play-reactivemongo" % playReactivemongoVersion,
     ws,
+    "org.reactivemongo" %% "reactivemongo-iteratees" % reactiveMongoVer,
     "uk.gov.hmrc" %% "microservice-bootstrap" % microserviceBootstrapVersion,
     "uk.gov.hmrc" %% "domain" % domainVersion,
     "com.typesafe.akka" %% "akka-contrib" % akkaContribVersion,

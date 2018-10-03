@@ -26,7 +26,7 @@ import org.scalatest.{BeforeAndAfterAll}
 import org.scalatest.mock.MockitoSugar
 import org.scalatestplus.play.OneServerPerSuite
 import reactivemongo.api.DefaultDB
-import reactivemongo.json.collection.JSONCollection
+import reactivemongo.play.json.collection.JSONCollection
 import repositories.BulkCalculationRepository
 import uk.gov.hmrc.lock.LockRepository
 import uk.gov.hmrc.play.test.UnitSpec

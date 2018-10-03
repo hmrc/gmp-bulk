@@ -17,6 +17,7 @@
 package repositories
 
 import java.util.UUID
+import play.api.libs.iteratee.{Iteratee, _}
 import com.kenshoo.play.metrics.PlayModule
 import connectors.{EmailConnector, ProcessedUploadTemplate}
 import helpers.RandomNino
@@ -34,17 +35,20 @@ import reactivemongo.api.Cursor
 import reactivemongo.api.commands.UpdateWriteResult
 import reactivemongo.api.indexes.CollectionIndexesManager
 import reactivemongo.bson.BSONDocument
-import reactivemongo.json._
-import reactivemongo.json.collection.{JSONQueryBuilder, JSONCollection}
+import reactivemongo.play.json._
+import reactivemongo.play.json.collection.JSONQueryBuilder
 import uk.gov.hmrc.mongo.{Awaiting, MongoSpecSupport}
 import uk.gov.hmrc.play.audit.http.connector.{AuditConnector, AuditResult}
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
+import reactivemongo.play.iteratees.cursorProducer
+
 import scala.collection.generic.CanBuildFrom
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.i18n.Messages.Implicits._
 import play.api.{Application, Mode}
 import play.api.inject.guice.{GuiceApplicationBuilder, GuiceableModule}
+import reactivemongo.play.json.collection.JSONCollection
 import uk.gov.hmrc.http.HeaderCarrier
 
 class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with MongoSpecSupport with Awaiting with MockitoSugar with BeforeAndAfterEach {
@@ -86,16 +90,16 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
     val queryBuilder = mock[JSONQueryBuilder]
     when(mockCollection.find(Matchers.any())(Matchers.any())) thenReturn queryBuilder
     val mockCursor = mock[Cursor[BSONDocument]]
-    when(queryBuilder.cursor[BSONDocument](Matchers.any(), Matchers.any())(Matchers.any(), Matchers.any(), Matchers.any())) thenAnswer new Answer[Cursor[BSONDocument]] {
+    when(queryBuilder.cursor[BSONDocument](Matchers.any(), Matchers.any())(Matchers.any(), Matchers.any())) thenAnswer new Answer[Cursor[BSONDocument]] {
       def answer(i: InvocationOnMock) = mockCursor
     }
 
     when(
-      mockCursor.collect[Traversable](Matchers.anyInt(), Matchers.anyBoolean())(Matchers.any[CanBuildFrom[Traversable[_], BSONDocument, Traversable[BSONDocument]]], Matchers.any[ExecutionContext])
+      mockCursor.collect[Traversable](Matchers.any(), Matchers.any())(Matchers.any[CanBuildFrom[Traversable[_], BSONDocument, Traversable[BSONDocument]]], Matchers.any[ExecutionContext])
     ) thenReturn Future.successful(List())
 
     when(
-      mockCursor.enumerate()
+      mockCursor
     ) thenReturn Enumerator[BSONDocument]()
   }
 

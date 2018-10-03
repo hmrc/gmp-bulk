@@ -114,7 +114,7 @@ trait DesConnector extends ServicesConfig with RawResponseReads with UsingCircui
 
         }
       }
-    })
+    })(hc=npsRequestHeaderCarrier)
 
     result
   }
