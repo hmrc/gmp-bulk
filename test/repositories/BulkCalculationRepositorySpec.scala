@@ -99,7 +99,7 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
     ) thenReturn Future.successful(List())
 
     when(
-      mockCursor
+      queryBuilder.cursor[BSONDocument](Matchers.any(), Matchers.any()).enumerator()
     ) thenReturn Enumerator[BSONDocument]()
   }
 
@@ -414,7 +414,7 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
         val request = json.as[BulkCalculationRequest]
         setupFindMock
         when(mockCollection.update(Matchers.any(),Matchers.any(),Matchers.any(),Matchers.any(),Matchers.any())(Matchers.any(),Matchers.any(),Matchers.any())).thenReturn(Future.successful(UpdateWriteResult(false,0,0,Nil,Nil,None,None,None)))
-        when(mockCollection.insert(Matchers.any(),Matchers.any())(Matchers.any(),Matchers.any())).thenThrow(new scala.RuntimeException)
+        when(mockCollection.insert(Matchers.any(),Matchers.any())(Matchers.any())).thenThrow(new scala.RuntimeException)
         when(mockCollection.indexesManager.create(Matchers.any())).thenReturn(Future.successful(UpdateWriteResult(true,0,0,Nil,Nil,None,None,None)))
         when(mockCollection.ImplicitlyDocumentProducer).thenThrow(new scala.RuntimeException)
         val testRepository = new TestCalculationRepository
@@ -474,7 +474,7 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
       "handle failure in requests to process" in {
         setupFindMock
         when(mockCollection.update(Matchers.any(),Matchers.any(),Matchers.any(),Matchers.any(),Matchers.any())(Matchers.any(),Matchers.any(),Matchers.any())).thenReturn(Future.successful(UpdateWriteResult(false,0,0,Nil,Nil,None,None,None)))
-        when(mockCollection.aggregate(Matchers.any(), Matchers.any(), Matchers.any(), Matchers.any(), Matchers.any())(Matchers.any())).thenThrow(new RuntimeException)
+        //when(mockCollection.aggregate(Matchers.any(), Matchers.any(), Matchers.any(), Matchers.any(), Matchers.any())(Matchers.any())).thenThrow(new RuntimeException)
         when(mockCollection.indexesManager.create(Matchers.any())).thenReturn(Future.successful(UpdateWriteResult(true,0,0,Nil,Nil,None,None,None)))
 
         val testRepository = new TestCalculationRepository
@@ -772,13 +772,13 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
     ) thenReturn queryBuilder
 
     when(
-      queryBuilder.cursor[T](Matchers.any(), Matchers.any())(Matchers.any(), Matchers.any[ExecutionContext], Matchers.any())
+      queryBuilder.cursor[T](Matchers.any(), Matchers.any())(Matchers.any(),Matchers.any())
     ) thenAnswer new Answer[Cursor[T]] {
       def answer(i: InvocationOnMock) = cursor
     }
 
     when(
-      cursor.collect[Traversable](Matchers.anyInt(), Matchers.anyBoolean())(Matchers.any[CanBuildFrom[Traversable[_], T, Traversable[T]]], Matchers.any[ExecutionContext])
+      cursor.collect[Traversable](Matchers.any(), Matchers.any())(Matchers.any[CanBuildFrom[Traversable[_], T, Traversable[T]]], Matchers.any[ExecutionContext])
     ) thenReturn Future.successful(returns)
 
   }

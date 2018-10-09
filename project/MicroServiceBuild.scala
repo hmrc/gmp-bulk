@@ -33,8 +33,8 @@ private object AppDependencies {
   private val mongoLockVersion              = "6.0.0-play-25"
   private val reactiveCircuitBreakerVersion = "3.2.0"
   private val taxyearVersion                = "0.4.0"
-  private val scalatestVersion              = "2.2.6"
-  private val scalatestPlusPlayVersion      = "1.5.1"
+  private val scalatestVersion              = "3.0.1"
+  private val scalatestPlusPlayVersion      = "2.0.0"
   private val pegdownVersion                = "1.6.0"
   private val reactiveMongoTest             = "4.1.0-play-25"
   private val mockitoCoreVersion            = "1.9.5"
@@ -64,9 +64,11 @@ private object AppDependencies {
       override lazy val test = Seq(
         "uk.gov.hmrc" %% "hmrctest" % hmrcTestVersion % scope,
         "org.scalatest" %% "scalatest" % scalatestVersion % scope,
+        "org.scalamock" %% "scalamock" % "3.6.0" % scope,
         "org.scalatestplus.play" %% "scalatestplus-play" % scalatestPlusPlayVersion % scope,
         "org.pegdown" % "pegdown" % pegdownVersion % scope,
         "uk.gov.hmrc" %% "reactivemongo-test" % reactiveMongoTest % scope,
+        "org.reactivemongo" %% "reactivemongo-iteratees" % reactiveMongoVer,
         "com.typesafe.akka" % "akka-testkit_2.11" % akkaContribVersion % scope, // Check it
         "org.mockito" % "mockito-core" % mockitoCoreVersion % scope,
         "uk.gov.hmrc" %% "tax-year" % taxyearVersion % scope
