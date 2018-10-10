@@ -17,6 +17,7 @@
 package repositories
 
 import java.util.UUID
+
 import play.api.libs.iteratee.{Iteratee, _}
 import com.kenshoo.play.metrics.PlayModule
 import connectors.{EmailConnector, ProcessedUploadTemplate}
@@ -48,12 +49,13 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.i18n.Messages.Implicits._
 import play.api.{Application, Mode}
 import play.api.inject.guice.{GuiceApplicationBuilder, GuiceableModule}
+import reactivemongo.api.collections.GenericCollection
 import reactivemongo.play.json.collection.JSONCollection
 import uk.gov.hmrc.http.HeaderCarrier
 
 class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with MongoSpecSupport with Awaiting with MockitoSugar with BeforeAndAfterEach {
 
-  val mockCollection = mock[JSONCollection]
+  val mockCollection = mock[GenericCollection[JSONSerializationPack.type]]
   val mockAuditConnector = mock[AuditConnector]
   val mockEmailConnector = mock[EmailConnector]
   val bulkCalculationRepository = new TestBulkCalculationMongoRepository
@@ -76,7 +78,7 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
   }
 
   class TestCalculationRepository extends BulkCalculationMongoRepository {
-    override lazy val collection = mockCollection
+    override lazy val proxyCollection = mockCollection
     override val metrics = mockMetrics
   }
 
@@ -97,10 +99,6 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
     when(
       mockCursor.collect[Traversable](Matchers.any(), Matchers.any())(Matchers.any[CanBuildFrom[Traversable[_], BSONDocument, Traversable[BSONDocument]]], Matchers.any[ExecutionContext])
     ) thenReturn Future.successful(List())
-
-    when(
-      queryBuilder.cursor[BSONDocument](Matchers.any(), Matchers.any()).enumerator()
-    ) thenReturn Enumerator[BSONDocument]()
   }
 
   val nino = RandomNino.generate
@@ -484,30 +482,6 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
       }
     }
 
-//    "finding count of remaining requests" must {
-//      "return count" in {
-//        val request = json.as[BulkCalculationRequest]
-//        val requestWithResponse = jsonWithEmptyResponse.as[BulkCalculationRequest]
-//
-//        await(bulkCalculationRepository.insertBulkDocument(request.copy(uploadReference = UUID.randomUUID().toString, complete = None)))
-//        await(bulkCalculationRepository.insertBulkDocument(request.copy(uploadReference = UUID.randomUUID().toString, complete = None)))
-//        await(bulkCalculationRepository.insertBulkDocument(requestWithResponse.copy(uploadReference = UUID.randomUUID().toString)))
-//
-//        val result = await(bulkCalculationRepository.findCountRemaining)
-//        result.get must be(4)
-//      }
-//
-//      "handle failure in getting count" in {
-//
-//        when (mockCollection.count[CalculationRequest](Matchers.any(),Matchers.any(),Matchers.any(),Matchers.any())(Matchers.any(),Matchers.any())).thenThrow(new RuntimeException)
-//        when(mockCollection.indexesManager.create(Matchers.any())).thenReturn(Future.successful(UpdateWriteResult(true,0,0,Nil,Nil,None,None,None)))
-//        val testRepository = new TestCalculationRepository
-//
-//        val found = await(testRepository.findCountRemaining)
-//        found must be(None)
-//      }
-//    }
-
     "finding a calculation" must {
 
       "return the found calculation in sorted order" in {
@@ -762,7 +736,7 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
     mockIndexesManager
   }
 
-  def setupFindFor[T](collection: JSONCollection, returns: Traversable[T])(implicit manifest: Manifest[T]) = {
+  def setupFindFor[T](collection: GenericCollection[JSONSerializationPack.type], returns: Traversable[T])(implicit manifest: Manifest[T]) = {
 
     val queryBuilder = mock[JSONQueryBuilder]
     val cursor = mock[Cursor[T]]

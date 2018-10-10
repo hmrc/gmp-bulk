@@ -28,12 +28,14 @@ import play.api.Logger
 import play.api.libs.iteratee.{Iteratee, _}
 import play.api.libs.json.{JsObject, Json}
 import play.modules.reactivemongo.MongoDbConnection
+import reactivemongo.api.collections.GenericCollection
 import reactivemongo.api.commands.{MultiBulkWriteResult, WriteResult}
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.api.{Cursor, DefaultDB, ReadPreference}
 import reactivemongo.bson.{BSONDateTime, BSONDocument, BSONObjectID}
 import reactivemongo.play.iteratees.cursorProducer
 import reactivemongo.play.json.ImplicitBSONHandlers._
+import reactivemongo.play.json.JSONSerializationPack
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
@@ -51,6 +53,8 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
     mongo,
     BulkCalculationRequest.formats) with BulkCalculationRepository {
 
+  lazy val proxyCollection: GenericCollection[JSONSerializationPack.type] = collection
+
     // $COVERAGE-OFF$
     {
 
@@ -64,7 +68,7 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
           val hasValidRequest = child.get("validCalculationRequest")
           val hasValidationErrors = child.get("validationErrors")
 
-          collection.update(BSONDocument("_id" -> childId.get), BSONDocument("$set" -> BSONDocument("isChild" -> true, "hasResponse" -> hasResponse.isDefined, "hasValidRequest" -> hasValidRequest.isDefined, "hasValidationErrors" -> hasValidationErrors.isDefined)))
+          proxyCollection.update(BSONDocument("_id" -> childId.get), BSONDocument("$set" -> BSONDocument("isChild" -> true, "hasResponse" -> hasResponse.isDefined, "hasValidRequest" -> hasValidRequest.isDefined, "hasValidationErrors" -> hasValidationErrors.isDefined)))
         }
       }
 
@@ -90,7 +94,7 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
     val startTime = System.currentTimeMillis()
     val selector = Json.obj("bulkId" -> bulkId, "lineId" -> lineId)
     val modifier = Json.obj("$set" -> Json.obj("calculationResponse" -> calculationResponse, "hasResponse" -> true))
-    val result = collection.update(selector, modifier)
+    val result = proxyCollection.update(selector, modifier)
 
     result onComplete {
       case _ => metrics.insertResponseByReferenceTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
@@ -113,7 +117,7 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
 
     val tryResult = Try {
 
-      val request = collection.find(Json.obj("uploadReference" -> uploadReference)).one[ProcessedBulkCalculationRequest]
+      val request = proxyCollection.find(Json.obj("uploadReference" -> uploadReference)).one[ProcessedBulkCalculationRequest]
 
       val result = request.flatMap {
         case Some(br) => {
@@ -123,7 +127,7 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
             case CsvFilter.Successful => Json.obj("bulkId" -> br._id, "validationErrors" -> Json.obj("$exists" -> false), "calculationResponse.containsErrors" -> false)
             case _ => Json.obj("bulkId" -> br._id)
           }
-          collection.find(childQuery).sort(Json.obj("lineId" -> 1)).cursor[ProcessReadyCalculationRequest](ReadPreference.primary)
+          proxyCollection.find(childQuery).sort(Json.obj("lineId" -> 1)).cursor[ProcessReadyCalculationRequest](ReadPreference.primary)
             .collect[List](-1, Cursor.FailOnError[List[ProcessReadyCalculationRequest]]()).map {
             calcRequests => Some(br.copy(calculationRequests = calcRequests))
           }
@@ -157,7 +161,7 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
 
     val tryResult = Try {
 
-      val result = collection.find(Json.obj("uploadReference" -> uploadReference), Json.obj("reference" -> 1, "total" -> 1, "failed" -> 1, "userId" -> 1))
+      val result = proxyCollection.find(Json.obj("uploadReference" -> uploadReference), Json.obj("reference" -> 1, "total" -> 1, "failed" -> 1, "userId" -> 1))
         .cursor[BulkResultsSummary](ReadPreference.primary).collect[List](-1,Cursor.FailOnError[List[BulkResultsSummary]]())
       result onComplete {
         case _ => metrics.findSummaryByReferenceTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
@@ -184,8 +188,10 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
     val startTime = System.currentTimeMillis()
 
     val tryResult = Try {
-      val result = collection.find(Json.obj("userId" -> userId, "complete" -> true), Json.obj("uploadReference" -> 1, "reference" -> 1, "timestamp" -> 1, "processedDateTime" -> 1))
-        .cursor[BulkPreviousRequest](ReadPreference.primary).collect[List](-1, Cursor.FailOnError[List[BulkPreviousRequest]]())
+      val result = proxyCollection
+        .find(Json.obj("userId" -> userId, "complete" -> true), Json.obj("uploadReference" -> 1, "reference" -> 1, "timestamp" -> 1, "processedDateTime" -> 1))
+        .cursor[BulkPreviousRequest](ReadPreference.primary)
+        .collect[List](-1, Cursor.FailOnError[List[BulkPreviousRequest]]())
 
       result onComplete {
         case _ => metrics.findByUserIdTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
@@ -213,7 +219,7 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
 
     val testResult = Try {
 
-      val incompleteBulk = collection.find(Json.obj("isParent" -> true, "complete" -> false)).sort(Json.obj("_id" -> 1)).cursor[ProcessedBulkCalculationRequest](ReadPreference.primary)
+      val incompleteBulk = proxyCollection.find(Json.obj("isParent" -> true, "complete" -> false)).sort(Json.obj("_id" -> 1)).cursor[ProcessedBulkCalculationRequest](ReadPreference.primary)
         .collect[List](-1, Cursor.FailOnError[List[ProcessedBulkCalculationRequest]]())
 
       incompleteBulk.map {
@@ -221,7 +227,7 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
           bulkList.map {
             bulkRequest => {
 
-              val childRequests = collection.find(Json.obj("isChild" -> true, "hasValidationErrors" -> false, "bulkId" -> bulkRequest._id,
+              val childRequests = proxyCollection.find(Json.obj("isChild" -> true, "hasValidationErrors" -> false, "bulkId" -> bulkRequest._id,
                 "hasValidRequest" -> true,
                 "hasResponse" -> false)).cursor[ProcessReadyCalculationRequest](ReadPreference.primary).collect[List](ApplicationConfig.bulkProcessingBatchSize, Cursor.FailOnError[List[ProcessReadyCalculationRequest]]())
 
@@ -266,7 +272,7 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
     Logger.debug("[BulkCalculationRepository][findAndComplete]: starting ")
     val findResult = Try {
 
-      val incompleteBulk = collection.find(Json.obj("isParent" -> true, "complete" -> false)).sort(Json.obj("_id" -> 1))
+      val incompleteBulk = proxyCollection.find(Json.obj("isParent" -> true, "complete" -> false)).sort(Json.obj("_id" -> 1))
         .cursor[ProcessedBulkCalculationRequest](ReadPreference.primary)
         .collect[List](-1,Cursor.FailOnError[List[ProcessedBulkCalculationRequest]]())
 
@@ -281,10 +287,10 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
 
               val childrenStartTime = System.currentTimeMillis()
 
-              collection.count(Some(Json.obj("bulkId" -> bulkRequest._id, "isChild" -> true, "hasResponse" -> false, "hasValidationErrors" -> false, "hasValidRequest" -> true))) flatMap {
+              proxyCollection.count(Some(Json.obj("bulkId" -> bulkRequest._id, "isChild" -> true, "hasResponse" -> false, "hasValidationErrors" -> false, "hasValidRequest" -> true))) flatMap {
                 case result => result match {
                   case count if count == 0 =>
-                    val processedChildren = collection.find(Json.obj("isChild" -> true, "bulkId" -> bulkRequest._id))
+                    val processedChildren = proxyCollection.find(Json.obj("isChild" -> true, "bulkId" -> bulkRequest._id))
                       .cursor[ProcessReadyCalculationRequest](ReadPreference.primary).collect[List](-1, Cursor.FailOnError[List[ProcessReadyCalculationRequest]]()).flatMap { allChildren =>
                       Future.successful(Some(bulkRequest.copy(calculationRequests = allChildren)))
                     }
@@ -321,7 +327,7 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
             val selector = Json.obj("uploadReference" -> request.get.uploadReference)
             val modifier = Json.obj("$set" -> Json.obj("complete" -> true, "total" -> totalRequests, "failed" -> failedRequests, "createdAt" -> BSONDateTime(DateTime.now().getMillis), "processedDateTime" -> LocalDateTime.now().toString))
 
-            val result = collection.update(selector, modifier)
+            val result = proxyCollection.update(selector, modifier)
 
             result.map {
               writeResult => Logger.debug(s"[BulkCalculationRepository][findAndComplete] : { result : $writeResult }")
@@ -354,7 +360,7 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
 
                   val childSelector = Json.obj("bulkId" -> request.get._id)
                   val childModifier = Json.obj("$set" -> Json.obj("createdAt" -> BSONDateTime(DateTime.now().getMillis)))
-                  val childResult = collection.update(childSelector, childModifier, multi = true)
+                  val childResult = proxyCollection.update(childSelector, childModifier, multi = true)
 
                   childResult.map {
                     childWriteResult => Logger.debug(s"[BulkCalculationRepository][findAndComplete] childResult: $childWriteResult")
@@ -398,31 +404,6 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
     }
   }
 
-  //  override def findCountRemaining: Future[Option[Int]] = {
-  //
-  //    val countResult = Try {
-  //      val result = collection.count(Some(Json.obj("validCalculationRequest" -> Json.obj("$exists" -> true), "calculationResponse" -> Json.obj("$exists" -> false),
-  //        "validationErrors" -> Json.obj("$exists" -> false))))
-  //
-  //      result
-  //    }
-  //
-  //    countResult match {
-  //      case Success(s) => {
-  //        s.map {
-  //          x =>
-  //            Logger.debug(s"[BulkCalculationRepository][findCountRemaining] $x")
-  //            Some(x)
-  //        }
-  //      }
-  //
-  //      case Failure(e) => {
-  //        Logger.error(s"[BulkCalculationRepository][findCountRemaining] ${e.getMessage}", e)
-  //        Future.successful(None)
-  //      }
-  //    }
-  //  }
-
   override def insertBulkDocument(bulkCalculationRequest: BulkCalculationRequest): Future[Boolean] = {
 
     Logger.info(s"[BulkCalculationRepository][insertBulkDocument][numDocuments]: ${bulkCalculationRequest.calculationRequests.size}")
@@ -463,11 +444,11 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
             hasResponse = c.calculationResponse.isDefined,
             hasValidRequest = c.validCalculationRequest.isDefined,
             hasValidationErrors = c.hasErrors)
-          }// map (implicitly[collection.ImplicitlyDocumentProducer](_))
+          }// map (implicitly[proxyCollection.ImplicitlyDocumentProducer](_))
 
-          val insertResult = collection.insert(strippedBulk).flatMap {
-            //result => collection.bulkInsert(ordered = false)(bulkDocs: _*)
-            result => collection.insert[ProcessReadyCalculationRequest](ordered = false).many(bulkDocs)
+          val insertResult = proxyCollection.insert(strippedBulk).flatMap {
+            //result => proxyCollection.bulkInsert(ordered = false)(bulkDocs: _*)
+            result => proxyCollection.insert[ProcessReadyCalculationRequest](ordered = false).many(bulkDocs)
           }
           insertResult onComplete {
             case _ => metrics.insertBulkDocumentTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
@@ -504,7 +485,7 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
 
     val tryResult = Try {
 
-      collection.find(Json.obj("uploadReference" -> uploadReference))
+      proxyCollection.find(Json.obj("uploadReference" -> uploadReference))
         .cursor[BulkResultsSummary](ReadPreference.primary).collect[List](-1, Cursor.FailOnError[List[BulkResultsSummary]]())
     }
 
