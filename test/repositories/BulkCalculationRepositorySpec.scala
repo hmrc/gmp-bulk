@@ -536,12 +536,9 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
 
     "finding requests" must {
       "return the found calculation" in {
-        setupFindMock
         val timeStamp = LocalDateTime.now()
         val processedDateTime = LocalDateTime.now()
-        when(mockCollection.update(Matchers.any(),Matchers.any(),Matchers.any(),Matchers.any(),Matchers.any())(Matchers.any(),Matchers.any(),Matchers.any())).thenReturn(Future.successful(UpdateWriteResult(false,0,0,Nil,Nil,None,None,None)))
-        when(mockCollection.indexesManager.create(Matchers.any())).thenReturn(Future.successful(UpdateWriteResult(true,0,0,Nil,Nil,None,None,None)))
-        setupFindFor(mockCollection, Seq(BulkPreviousRequest("", "", timeStamp, processedDateTime)))
+        setupFindFor(mockCollection, List(BulkPreviousRequest("", "", timeStamp, processedDateTime)))
 
         val testRepository = new TestCalculationRepository
 
@@ -742,11 +739,11 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
     val cursor = mock[Cursor[T]]
 
     when(
-      collection.find(Matchers.any[JsObject], Matchers.any())(Matchers.any(), Matchers.any())
+      collection.find(Matchers.any[JsObject], Matchers.any[JsObject])(Matchers.any(), Matchers.any())
     ) thenReturn queryBuilder
 
     when(
-      queryBuilder.cursor[T](Matchers.any(), Matchers.any())(Matchers.any(),Matchers.any())
+      queryBuilder.cursor[T](Matchers.any(), Matchers.any())(Matchers.any(), Matchers.any())
     ) thenAnswer new Answer[Cursor[T]] {
       def answer(i: InvocationOnMock) = cursor
     }

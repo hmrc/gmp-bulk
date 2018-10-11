@@ -188,6 +188,23 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
     val startTime = System.currentTimeMillis()
 
     val tryResult = Try {
+      println("**************************1")
+      println(proxyCollection)
+      println("**************************2")
+      println(proxyCollection
+        .find(Json.obj("userId" -> userId, "complete" -> true), Json.obj("uploadReference" -> 1, "reference" -> 1, "timestamp" -> 1, "processedDateTime" -> 1)))
+      println("**************************3")
+      println(proxyCollection
+        .find(Json.obj("userId" -> userId, "complete" -> true), Json.obj("uploadReference" -> 1, "reference" -> 1, "timestamp" -> 1, "processedDateTime" -> 1))
+        .cursor[BulkPreviousRequest](ReadPreference.primary))
+      println("**************************4")
+      println(proxyCollection
+        .find(Json.obj("userId" -> userId, "complete" -> true), Json.obj("uploadReference" -> 1, "reference" -> 1, "timestamp" -> 1, "processedDateTime" -> 1))
+        .cursor[BulkPreviousRequest](ReadPreference.primary)
+        .collect[List](-1, Cursor.FailOnError[List[BulkPreviousRequest]]()))
+      println("**************************5")
+
+
       val result = proxyCollection
         .find(Json.obj("userId" -> userId, "complete" -> true), Json.obj("uploadReference" -> 1, "reference" -> 1, "timestamp" -> 1, "processedDateTime" -> 1))
         .cursor[BulkPreviousRequest](ReadPreference.primary)
