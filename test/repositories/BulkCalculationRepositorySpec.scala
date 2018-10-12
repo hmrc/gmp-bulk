@@ -472,7 +472,6 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
       "handle failure in requests to process" in {
         setupFindMock
         when(mockCollection.update(Matchers.any(),Matchers.any(),Matchers.any(),Matchers.any(),Matchers.any())(Matchers.any(),Matchers.any(),Matchers.any())).thenReturn(Future.successful(UpdateWriteResult(false,0,0,Nil,Nil,None,None,None)))
-        //when(mockCollection.aggregate(Matchers.any(), Matchers.any(), Matchers.any(), Matchers.any(), Matchers.any())(Matchers.any())).thenThrow(new RuntimeException)
         when(mockCollection.indexesManager.create(Matchers.any())).thenReturn(Future.successful(UpdateWriteResult(true,0,0,Nil,Nil,None,None,None)))
 
         val testRepository = new TestCalculationRepository
