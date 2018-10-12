@@ -42,7 +42,7 @@ import uk.gov.hmrc.mongo.{Awaiting, MongoSpecSupport}
 import uk.gov.hmrc.play.audit.http.connector.{AuditConnector, AuditResult}
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
-import reactivemongo.play.iteratees.cursorProducer
+import reactivemongo.play.iteratees.{PlayIterateesCursor, cursorProducer}
 
 import scala.collection.generic.CanBuildFrom
 import scala.concurrent.{ExecutionContext, Future}
@@ -91,7 +91,7 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
   def setupFindMock = {
     val queryBuilder = mock[JSONQueryBuilder]
     when(mockCollection.find(Matchers.any())(Matchers.any())) thenReturn queryBuilder
-    val mockCursor = mock[Cursor[BSONDocument]]
+    val mockCursor = mock[PlayIterateesCursor[BSONDocument]]
     when(queryBuilder.cursor[BSONDocument](Matchers.any(), Matchers.any())(Matchers.any(), Matchers.any())) thenAnswer new Answer[Cursor[BSONDocument]] {
       def answer(i: InvocationOnMock) = mockCursor
     }
@@ -99,6 +99,9 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
     when(
       mockCursor.collect[Traversable](Matchers.any(), Matchers.any())(Matchers.any[CanBuildFrom[Traversable[_], BSONDocument, Traversable[BSONDocument]]], Matchers.any[ExecutionContext])
     ) thenReturn Future.successful(List())
+
+    when(mockCursor.enumerator(Matchers.any(), Matchers.any())(Matchers.any()))
+      .thenReturn(mock[Enumerator[BSONDocument]])
   }
 
   val nino = RandomNino.generate
@@ -535,6 +538,8 @@ class BulkCalculationRepositorySpec extends PlaySpec with OneServerPerSuite with
 
     "finding requests" must {
       "return the found calculation" in {
+        setupFindMock
+        
         val timeStamp = LocalDateTime.now()
         val processedDateTime = LocalDateTime.now()
         setupFindFor(mockCollection, List(BulkPreviousRequest("", "", timeStamp, processedDateTime)))
