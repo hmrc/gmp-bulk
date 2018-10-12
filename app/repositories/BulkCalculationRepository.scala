@@ -444,12 +444,12 @@ class BulkCalculationMongoRepository(implicit mongo: () => DefaultDB)
             hasResponse = c.calculationResponse.isDefined,
             hasValidRequest = c.validCalculationRequest.isDefined,
             hasValidationErrors = c.hasErrors)
-          }// map (implicitly[proxyCollection.ImplicitlyDocumentProducer](_))
-
-          val insertResult = proxyCollection.insert(strippedBulk).flatMap {
-            //result => proxyCollection.bulkInsert(ordered = false)(bulkDocs: _*)
-            result => proxyCollection.insert[ProcessReadyCalculationRequest](ordered = false).many(bulkDocs)
           }
+
+          val insertResult = proxyCollection.insert(strippedBulk).flatMap {_ =>
+            proxyCollection.insert[ProcessReadyCalculationRequest](ordered = false).many(bulkDocs)
+          }
+          
           insertResult onComplete {
             case _ => metrics.insertBulkDocumentTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
           }
