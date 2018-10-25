@@ -164,7 +164,7 @@ trait DesConnector extends ServicesConfig with RawResponseReads with UsingCircui
       "Environment" -> serviceEnvironment))
 
     val startTime = System.currentTimeMillis()
-    val url = s"${citizenDetailsUrl}/citizen-details/${nino.take(8)}/etag"
+    val url = s"$citizenDetailsUrl/citizen-details/$nino/etag"
 
     Logger.debug(s"[DesConnector][getPersonDetails] Contacting DES at $url")
 
