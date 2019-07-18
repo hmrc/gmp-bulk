@@ -25,33 +25,18 @@ private object AppDependencies {
   import play.sbt.PlayImport._
   import play.core.PlayVersion
 
-  private val microserviceBootstrapVersion  = "10.6.0"
-  private val domainVersion                 = "5.3.0"
-  private val playReactivemongoVersion      = "6.2.0"
-  private val akkaContribVersion            = "2.4.10"
-  private val playSchedulingVersion         = "5.4.0"
-  private val mongoLockVersion              = "6.8.0-play-25"
-  private val reactiveCircuitBreakerVersion = "3.3.0"
-  private val taxyearVersion                = "0.5.0"
-  private val scalatestVersion              = "3.0.2"
-  private val scalatestPlusPlayVersion      = "2.0.1"
-  private val pegdownVersion                = "1.6.0"
-  private val reactiveMongoTest             = "4.7.0-play-25"
-  private val mockitoCoreVersion            = "1.9.5"
-  private val hmrcTestVersion               = "3.4.0-play-25"
-  private val reactiveMongoVer              = "0.16.1"
-  
   val compile = Seq(
-    "uk.gov.hmrc" %% "play-reactivemongo" % playReactivemongoVersion,
+    "uk.gov.hmrc"       %% "play-reactivemongo"       % "6.2.0",
     ws,
-    "org.reactivemongo" %% "reactivemongo-iteratees" % reactiveMongoVer,
-    "uk.gov.hmrc" %% "microservice-bootstrap" % microserviceBootstrapVersion,
-    "uk.gov.hmrc" %% "domain" % domainVersion,
-    "com.typesafe.akka" %% "akka-contrib" % akkaContribVersion,
-    "uk.gov.hmrc" %% "play-scheduling" % playSchedulingVersion,
-    "uk.gov.hmrc" %% "mongo-lock" % mongoLockVersion,
-    "uk.gov.hmrc" %% "reactive-circuit-breaker" % reactiveCircuitBreakerVersion,
-    "uk.gov.hmrc" %% "tax-year" % taxyearVersion
+    "org.reactivemongo" %% "reactivemongo-iteratees"  % "0.16.1",
+    "uk.gov.hmrc"       %% "microservice-bootstrap"   % "10.6.0",
+    "uk.gov.hmrc"       %% "domain"                   % "5.3.0",
+    "com.typesafe.akka" %% "akka-contrib"             % "2.4.10",
+    "uk.gov.hmrc"       %% "play-scheduling"          % "5.4.0",
+    "uk.gov.hmrc"       %% "mongo-lock"               % "6.8.0-play-25",
+    "uk.gov.hmrc"       %% "reactive-circuit-breaker" % "3.3.0",
+    "uk.gov.hmrc"       %% "tax-year"                 % "0.5.0",
+    "uk.gov.hmrc"       %% "auth-client"              %  "2.22.0-play-25"
   )
 
   trait TestDependencies {
@@ -62,16 +47,16 @@ private object AppDependencies {
   object Test {
     def apply() = new TestDependencies {
       override lazy val test = Seq(
-        "uk.gov.hmrc" %% "hmrctest" % hmrcTestVersion % scope,
-        "org.scalatest" %% "scalatest" % scalatestVersion % scope,
-        "org.scalamock" %% "scalamock" % "3.6.0" % scope,
-        "org.scalatestplus.play" %% "scalatestplus-play" % scalatestPlusPlayVersion % scope,
-        "org.pegdown" % "pegdown" % pegdownVersion % scope,
-        "uk.gov.hmrc" %% "reactivemongo-test" % reactiveMongoTest % scope,
-        "org.reactivemongo" %% "reactivemongo-iteratees" % reactiveMongoVer,
-        "com.typesafe.akka" % "akka-testkit_2.11" % akkaContribVersion % scope, // Check it
-        "org.mockito" % "mockito-core" % mockitoCoreVersion % scope,
-        "uk.gov.hmrc" %% "tax-year" % taxyearVersion % scope
+        "uk.gov.hmrc"             %% "hmrctest"                 % "3.4.0-play-25" % scope,
+        "org.scalatest"           %% "scalatest"                % "3.0.2"         % scope,
+        "org.scalamock"           %% "scalamock"                % "3.6.0"         % scope,
+        "org.scalatestplus.play"  %% "scalatestplus-play"       % "2.0.1"         % scope,
+        "org.pegdown"             % "pegdown"                   % "1.6.0"         % scope,
+        "uk.gov.hmrc"             %% "reactivemongo-test"       % "4.7.0-play-25" % scope,
+        "org.reactivemongo"       %% "reactivemongo-iteratees"  % "6.2.0",
+        "com.typesafe.akka"       % "akka-testkit_2.11"         % "2.4.10"        % scope, // Check it
+        "org.mockito"             % "mockito-core"              % "1.9.5"         % scope,
+        "uk.gov.hmrc"             %% "tax-year"                 % "0.5.0"         % scope
       )
     }.test
   }
