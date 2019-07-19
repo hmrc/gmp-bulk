@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.c2ni.controllers.auth
+package controllers.auth
 
 import akka.util.Timeout
 import controllers.auth.{AuthAction, AuthActionImpl, MicroserviceAuthConnector}
