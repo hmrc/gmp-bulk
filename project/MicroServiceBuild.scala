@@ -51,11 +51,11 @@ private object AppDependencies {
         "org.scalatest"           %% "scalatest"                % "3.0.2"         % scope,
         "org.scalamock"           %% "scalamock"                % "3.6.0"         % scope,
         "org.scalatestplus.play"  %% "scalatestplus-play"       % "2.0.1"         % scope,
-        "org.pegdown"             % "pegdown"                   % "1.6.0"         % scope,
+        "org.pegdown"             %  "pegdown"                  % "1.6.0"         % scope,
         "uk.gov.hmrc"             %% "reactivemongo-test"       % "4.7.0-play-25" % scope,
-        "org.reactivemongo"       %% "reactivemongo-iteratees"  % "6.2.0",
-        "com.typesafe.akka"       % "akka-testkit_2.11"         % "2.4.10"        % scope, // Check it
-        "org.mockito"             % "mockito-core"              % "1.9.5"         % scope,
+        "org.reactivemongo"       %% "reactivemongo-iteratees"  % "0.16.1",
+        "com.typesafe.akka"       %  "akka-testkit_2.11"        % "2.4.10"        % scope, // Check it
+        "org.mockito"             %  "mockito-core"             % "1.9.5"         % scope,
         "uk.gov.hmrc"             %% "tax-year"                 % "0.5.0"         % scope
       )
     }.test
@@ -67,11 +67,11 @@ private object AppDependencies {
       override lazy val scope: String = "it"
 
       override lazy val test = Seq(
-        "uk.gov.hmrc" %% "hmrctest" % hmrcTestVersion % scope,
-        "org.scalatest" %% "scalatest" % scalatestVersion % scope,
-        "org.pegdown" % "pegdown" % pegdownVersion % scope,
-        "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
-        "uk.gov.hmrc" %% "tax-year" % taxyearVersion % scope
+        "uk.gov.hmrc"         %% "hmrctest"   % "3.4.0-play-25"     % scope,
+        "org.scalatest"       %% "scalatest"  % "3.0.2"             % scope,
+        "org.pegdown"         %  "pegdown"    % "1.6.0"             % scope,
+        "com.typesafe.play"   %% "play-test"  % PlayVersion.current % scope,
+        "uk.gov.hmrc"         %% "tax-year"   % "0.5.0"             % scope
       )
     }.test
   }

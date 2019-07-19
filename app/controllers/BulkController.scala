@@ -18,19 +18,19 @@ package controllers
 
 import com.google.inject.Inject
 import connectors.{EmailConnector, ReceivedUploadTemplate}
+import controllers.auth.AuthAction
 import models._
 import play.api.libs.json.Json
-import play.api.mvc._
 import repositories.BulkCalculationRepository
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class BulkController @Inject()(emailConnector: EmailConnector, csvGenerator: CsvGenerator) extends BaseController {
+class BulkController @Inject()(authAction: AuthAction, emailConnector: EmailConnector, csvGenerator: CsvGenerator) extends BaseController {
 
   val repository: BulkCalculationRepository = BulkCalculationRepository()
 
-  def post(userId: String) = Action.async(parse.json(maxLength = 1024 * 10000)) {
+  def post(userId: String) = authAction.async(parse.json(maxLength = 1024 * 10000)) {
     implicit request =>
       withJsonBody[BulkCalculationRequest] { bulkCalculationRequest =>
         repository.insertBulkDocument(bulkCalculationRequest).map {
@@ -43,7 +43,7 @@ class BulkController @Inject()(emailConnector: EmailConnector, csvGenerator: Csv
       }
   }
 
-  def getPreviousRequests(userId: String) = Action.async {
+  def getPreviousRequests(userId: String) = authAction.async {
     implicit request =>
       repository.findByUserId(userId).map {
         case Some(x) => {
@@ -52,7 +52,7 @@ class BulkController @Inject()(emailConnector: EmailConnector, csvGenerator: Csv
       }
   }
 
-  def getResultsSummary(userId: String, uploadReference: String) = Action.async {
+  def getResultsSummary(userId: String, uploadReference: String) = authAction.async {
     implicit request =>
       repository.findSummaryByReference(uploadReference).map {
         case Some(result) => userId match {
@@ -64,7 +64,7 @@ class BulkController @Inject()(emailConnector: EmailConnector, csvGenerator: Csv
 
   }
 
-  def getCalculationsAsCsv(userId: String, reference: String, csvFilter: CsvFilter) = Action.async {
+  def getCalculationsAsCsv(userId: String, reference: String, csvFilter: CsvFilter) = authAction.async {
     implicit request =>
       repository.findByReference(reference, csvFilter).map {
         case Some(result) => userId match {
@@ -78,7 +78,7 @@ class BulkController @Inject()(emailConnector: EmailConnector, csvGenerator: Csv
       }
   }
 
-  def getContributionsAndEarningsAsCsv(userId: String, reference: String) = Action.async {
+  def getContributionsAndEarningsAsCsv(userId: String, reference: String) = authAction.async {
     implicit request =>
       repository.findByReference(reference).map {
         case Some(result) => userId match {

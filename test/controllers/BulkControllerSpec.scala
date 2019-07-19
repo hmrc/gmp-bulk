@@ -17,6 +17,7 @@
 package controllers
 
 import connectors.{EmailConnector, ReceivedUploadTemplate}
+import controllers.auth.FakeAuthAction
 import helpers.RandomNino
 import models._
 import org.joda.time.{LocalDate, LocalDateTime}
@@ -43,9 +44,8 @@ class BulkControllerSpec extends PlaySpec with OneServerPerSuite with Awaiting w
   val createdAt = Some(LocalDateTime.now)
   val csvGenerator = app.injector.instanceOf[CsvGenerator]
 
-  object TestBulkController extends BulkController(mockEmailConnector, csvGenerator) {
+  object TestBulkController extends BulkController(FakeAuthAction, mockEmailConnector, csvGenerator) {
     override val repository = mockRepo
-
   }
 
   val nino = RandomNino.generate

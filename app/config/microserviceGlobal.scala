@@ -40,10 +40,6 @@ object ControllerConfiguration extends ControllerConfig {
   lazy val controllerConfigs = Play.current.configuration.underlying.as[Config]("controllers")
 }
 
-object AuthParamsControllerConfiguration extends AuthParamsControllerConfig {
-  lazy val controllerConfigs = ControllerConfiguration.controllerConfigs
-}
-
 object MicroserviceAuditFilter extends AuditFilter with AppName  with MicroserviceFilterSupport {
   override val auditConnector = MicroserviceAuditConnector
   override def controllerNeedsAuditing(controllerName: String) = ControllerConfiguration.paramsForController(controllerName).needsAuditing
@@ -55,12 +51,6 @@ object MicroserviceLoggingFilter extends LoggingFilter  with MicroserviceFilterS
   override def controllerNeedsLogging(controllerName: String) = ControllerConfiguration.paramsForController(controllerName).needsLogging
 }
 
-object MicroserviceAuthFilter extends AuthorisationFilter  with MicroserviceFilterSupport {
-  override lazy val authParamsConfig = AuthParamsControllerConfiguration
-  override lazy val authConnector = MicroserviceAuthConnector
-  override def controllerNeedsAuth(controllerName: String): Boolean = ControllerConfiguration.paramsForController(controllerName).needsAuth
-}
-
 object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with RunningOfScheduledJobs with ActorUtils {
   override val auditConnector = MicroserviceAuditConnector
 
@@ -70,7 +60,7 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Ru
 
   override val microserviceAuditFilter = MicroserviceAuditFilter
 
-  override val authFilter = Some(MicroserviceAuthFilter)
+  override val authFilter = None
 
   override val scheduledJobs: Seq[ScheduledJob] = {
     Seq(new ExclusiveScheduledJob {

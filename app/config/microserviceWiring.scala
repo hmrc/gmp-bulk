@@ -24,8 +24,7 @@ import uk.gov.hmrc.http.hooks.HttpHooks
 import uk.gov.hmrc.http.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import uk.gov.hmrc.play.audit.http.HttpAuditing
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
-import uk.gov.hmrc.play.auth.microservice.connectors.AuthConnector
-import uk.gov.hmrc.play.config.{AppName, RunMode, ServicesConfig}
+import uk.gov.hmrc.play.config.{AppName, RunMode}
 import uk.gov.hmrc.play.http.ws._
 import uk.gov.hmrc.play.microservice.config.LoadAuditingConfig
 
@@ -49,9 +48,3 @@ trait WSHttp extends HttpGet with WSGet with HttpPut with WSPut with HttpPost wi
   override protected def appNameConfiguration: Configuration = Play.current.configuration
 }
 object WSHttp extends WSHttp
-
-object MicroserviceAuthConnector extends AuthConnector with ServicesConfig with WSHttp {
-  override val authBaseUrl = baseUrl("auth")
-  override protected def mode: Mode = Play.current.mode
-  override protected def runModeConfiguration: Configuration = Play.current.configuration
-}
