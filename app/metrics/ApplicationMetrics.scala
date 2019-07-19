@@ -23,12 +23,13 @@ import com.kenshoo.play.metrics.Metrics
 import play.api.Logger
 
 import scala.concurrent.duration
+import scala.util.Try
 
 class ApplicationMetrics @Inject()(metrics: Metrics) {
   lazy val registry = metrics.defaultRegistry
 
-  private val timer = (name: String) => registry.timer(name)
-  private val counter = (name: String) => registry.counter(name)
+  private val timer = (name: String) => Try{registry.timer(name)}
+  private val counter = (name: String) => Try{registry.counter(name)}
 
   Logger.info("[Metrics][constructor] Preloading metrics keys")
 
@@ -56,57 +57,68 @@ class ApplicationMetrics @Inject()(metrics: Metrics) {
     ("mci-connection-timer", timer),
     ("mci-lock-result-count", counter),
     ("mci-error-result-count", counter)
-  ) foreach { t => t._2(t._1) }
+  ).foreach { t => t._2(t._1) }
 
-  def processRequest(diff: Long, unit: duration.TimeUnit): Unit = registry.timer("processRequest-timer").update(diff, unit)
+  def metricTimer(diff: Long, unit: duration.TimeUnit, name : String) : Unit = {
+    Try{registry.timer(name).update(diff, unit)}
+      .failed.foreach(ex => Logger.warn(s"$name failed : Metrics may be disabled" ))
+  }
 
-  def registerSuccessfulRequest() = registry.counter("des-connector-requests-successful").inc()
+  def metricCounter(name : String) : Unit = {
+    Try{registry.counter(name).inc()}
+      .failed.foreach(ex => Logger.warn(s"$name failed : Metrics may be disabled" ))
+  }
 
-  def registerFailedRequest() = registry.counter("des-connector-requests-failed").inc()
+  def processRequest(diff: Long, unit: duration.TimeUnit): Unit = metricTimer(diff, unit, "processRequest-timer")
 
-  def registerStatusCode(code: String) = registry.counter(s"des-connector-httpstatus-$code").inc()
+  def registerSuccessfulRequest() = metricCounter("des-connector-requests-successful")
 
-  def desConnectionTime(diff: Long, timeUnit: TimeUnit) = registry.timer("des-connector-timer").update(diff, timeUnit)
+  def registerFailedRequest() = metricCounter("des-connector-requests-failed")
+
+  def registerStatusCode(code: String) = metricCounter(s"des-connector-httpstatus-$code")
+
+  def desConnectionTime(diff: Long, timeUnit: TimeUnit) = metricTimer(diff, timeUnit, "des-connector-timer")
 
   def insertResponseByReferenceTimer(diff: Long, unit: duration.TimeUnit): Unit =
-    registry.timer("mongo-insertResponseByReference-timer").update(diff, unit)
+    metricTimer(diff, unit, "mongo-insertResponseByReference-timer")
 
   def findRequestsToProcessTimer(diff: Long, unit: duration.TimeUnit): Unit =
-    registry.timer("mongo-findRequestsToProcess-timer").update(diff, unit)
+    metricTimer(diff, unit, "mongo-findRequestsToProcess-timer")
 
   def findCountRemainingTimer(diff: Long, unit: duration.TimeUnit): Unit =
-    registry.timer("mongo-findCountRemaining-timer").update(diff, unit)
+    metricTimer(diff, unit, "mongo-findCountRemaining-timer")
 
   def findByUserIdTimer(diff: Long, unit: duration.TimeUnit): Unit =
-    registry.timer("mongo-findByUserId-timer").update(diff, unit)
+    metricTimer(diff, unit, "mongo-findByUserId-timer")
 
   def insertBulkDocumentTimer(diff: Long, unit: duration.TimeUnit): Unit =
-    registry.timer("mongo-insertBulkDocument-timer").update(diff, unit)
+    metricTimer(diff, unit, "mongo-insertBulkDocument-timer")
 
   def findAndCompleteTimer(diff: Long, unit: duration.TimeUnit): Unit =
-    registry.timer("mongo-findAndComplete-timer").update(diff, unit)
+    metricTimer(diff, unit, "mongo-findAndComplete-timer")
 
   def findSummaryByReferenceTimer(diff: Long, unit: duration.TimeUnit): Unit =
-    registry.timer("mongo-findSummaryByReference-timer").update(diff, unit)
+    metricTimer(diff, unit, "mongo-findSummaryByReference-timer")
 
   def findByReferenceTimer(diff: Long, unit: duration.TimeUnit): Unit =
-    registry.timer("mongo-findByReference-timer").update(diff, unit)
+    metricTimer(diff, unit, "mongo-findByReference-timer")
 
   def findAndCompleteChildrenTimer(diff: Long, unit: duration.TimeUnit): Unit =
-    registry.timer("mongo-findAndCompleteChildren-timer").update(diff, unit)
+    metricTimer(diff, unit, "mongo-findAndCompleteChildren-timer")
 
   def findAndCompleteParentTimer(diff: Long, unit: duration.TimeUnit): Unit =
-    registry.timer("mongo-findAndCompleteParent-timer").update(diff, unit)
+    metricTimer(diff, unit, "mongo-findAndCompleteParent-timer")
 
   def findAndCompleteAllChildrenTimer(diff: Long, unit: duration.TimeUnit): Unit =
-    registry.timer("mongo-findAndCompleteAllChildren-timer").update(diff, unit)
+    metricTimer(diff, unit, "mongo-findAndCompleteAllChildren-timer")
 
   def mciConnectionTimer(diff: Long, unit: TimeUnit) =
-    registry.timer("mci-connection-timer").update(diff, unit)
+    metricTimer(diff, unit, "mci-connection-timer")
 
   def mciLockResult() =
-    registry.counter("mci-lock-result-count").inc()
+    metricCounter("mci-lock-result-count")
 
-  def mciErrorResult() = registry.counter("mci-error-result-count").inc()
+  def mciErrorResult() =
+    metricCounter("mci-error-result-count")
 
 }
