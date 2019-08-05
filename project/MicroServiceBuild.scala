@@ -54,7 +54,7 @@ private object AppDependencies {
         "org.pegdown"             %  "pegdown"                  % "1.6.0"         % scope,
         "uk.gov.hmrc"             %% "reactivemongo-test"       % "4.7.0-play-25" % scope,
         "org.reactivemongo"       %% "reactivemongo-iteratees"  % "0.16.1",
-        "com.typesafe.akka"       %  "akka-testkit_2.11"        % "2.4.10"        % scope, // Check it
+        "com.typesafe.akka"       %  "akka-testkit_2.11"        % "2.4.10"        % scope,
         "org.mockito"             %  "mockito-core"             % "1.9.5"         % scope,
         "uk.gov.hmrc"             %% "tax-year"                 % "0.5.0"         % scope
       )
