@@ -452,7 +452,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics)(impl
           }
 
           val insertResult = proxyCollection.insert(strippedBulk).flatMap {_ =>
-            proxyCollection.insert[ProcessReadyCalculationRequest](ordered = false).many(bulkDocs)
+            proxyCollection.insert(ordered = false).many(bulkDocs)
           }
 
           insertResult onComplete {
