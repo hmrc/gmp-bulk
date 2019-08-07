@@ -451,7 +451,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics)(impl
             hasValidationErrors = c.hasErrors)
           }
 
-          val insertResult = proxyCollection.insert(strippedBulk).flatMap {_ =>
+          val insertResult: Future[MultiBulkWriteResult] = proxyCollection.insert(strippedBulk).flatMap {_ =>
             proxyCollection.insert(ordered = false).many(bulkDocs)
           }
 
