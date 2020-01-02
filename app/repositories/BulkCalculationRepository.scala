@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 HM Revenue & Customs
+ * Copyright 2020 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import events.BulkEvent
 import metrics.ApplicationMetrics
 import models._
 import org.joda.time.{DateTime, LocalDateTime}
+import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.iteratee.{Iteratee, _}
 import play.api.libs.json.Json
 import play.api.{Logger, Play}
@@ -548,9 +549,12 @@ trait BulkCalculationRepository extends ReactiveRepository[BulkCalculationReques
   def insertBulkDocument(bulkCalculationRequest: BulkCalculationRequest): Future[Boolean]
 }
 
-object BulkCalculationRepository extends MongoDbConnection {
+object BulkCalculationRepository  {
   // $COVERAGE-OFF$
+  implicit val db : scala.Function0[reactivemongo.api.DefaultDB] = (GuiceApplicationBuilder().build().injector.instanceOf[ReactiveMongoComponent]).mongoConnector.db
+
   private lazy val repository = Play.current.injector.instanceOf[BulkCalculationMongoRepository]
+
   // $COVERAGE-ON$
   def apply(): BulkCalculationMongoRepository = repository
 }
