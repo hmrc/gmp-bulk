@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 HM Revenue & Customs
+ * Copyright 2020 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,17 +21,18 @@ import akka.contrib.throttle.Throttler.SetTarget
 import akka.testkit._
 import com.kenshoo.play.metrics.PlayModule
 import config.ApplicationConfiguration
+import connectors.DesConnector
 import helpers.RandomNino
+import metrics.ApplicationMetrics
 import models.{ProcessReadyCalculationRequest, ValidCalculationRequest}
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.mockito.MockitoSugar
-import org.scalatestplus.play.OneServerPerSuite
-import org.scalatestplus.play.guice.{GuiceOneAppPerSuite, GuiceOneAppPerTest}
+import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.inject.guice.{GuiceApplicationBuilder, GuiceableModule}
 import play.api.{Application, Mode}
-import repositories.BulkCalculationRepository
+import repositories.BulkCalculationMongoRepository
 import uk.gov.hmrc.lock.LockRepository
 import uk.gov.hmrc.play.test.UnitSpec
 
@@ -56,6 +57,12 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
   lazy val applicationConfig = app.injector.instanceOf[ApplicationConfiguration]
   val mockLockRepo = mock[LockRepository]
 
+  val mongoApi  = app.injector.instanceOf[play.modules.reactivemongo.ReactiveMongoComponent]
+  val desConnector = app.injector.instanceOf[DesConnector]
+  val metrics = app.injector.instanceOf[ApplicationMetrics]
+  lazy val mockRepository = mock[BulkCalculationMongoRepository]
+
+
   override def beforeAll = {
     when(mockLockRepo.lock(anyString, anyString, any())) thenReturn true
   }
@@ -70,9 +77,8 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
 
       lazy val throttlerProbe = TestProbe()
       lazy val calculationActorProbe = TestProbe()
-      lazy val mockRepository = mock[BulkCalculationRepository]
 
-      lazy val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig) {
+      lazy val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, metrics) {
         override lazy val throttler = throttlerProbe.ref
         override lazy val requestActor = calculationActorProbe.ref
         override lazy val repository = mockRepository
@@ -105,9 +111,8 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
 
       val throttlerProbe = TestProbe()
       val calculationActorProbe = TestProbe()
-      val mockRepository = mock[BulkCalculationRepository]
 
-      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig) {
+      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, metrics) {
         override lazy val throttler = throttlerProbe.ref
         override lazy val requestActor = calculationActorProbe.ref
         override lazy val repository = mockRepository
@@ -129,9 +134,8 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
 
       val throttlerProbe = TestProbe()
       val calculationActorProbe = TestProbe()
-      val mockRepository = mock[BulkCalculationRepository]
 
-      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig) {
+      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, metrics) {
 
         override lazy val throttler = throttlerProbe.ref
         override lazy val requestActor = calculationActorProbe.ref

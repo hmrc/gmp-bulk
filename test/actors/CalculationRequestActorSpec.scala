@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 HM Revenue & Customs
+ * Copyright 2020 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,28 +26,24 @@ import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
-import repositories.BulkCalculationRepository
+import repositories.BulkCalculationMongoRepository
 import uk.gov.hmrc.http.{HeaderCarrier, Upstream4xxResponse}
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-class CalculationRequestActorMock(val desConnector: DesConnector, val repository: BulkCalculationRepository, val metrics: ApplicationMetrics)
+class CalculationRequestActorMock(val desConnector: DesConnector, val repository: BulkCalculationMongoRepository, val metrics: ApplicationMetrics)
   extends CalculationRequestActor with CalculationRequestActorComponent
 
 class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationActorSystem")) with UnitSpec with MockitoSugar
   with BeforeAndAfterAll with DefaultTimeout with ImplicitSender with ActorUtils with BeforeAndAfter {
 
   val mockDesConnector = mock[DesConnector]
-  val mockRepository = mock[BulkCalculationRepository]
+  val mockRepository = mock[BulkCalculationMongoRepository]
   val mockMetrics = mock[ApplicationMetrics]
 
   val testTimeout = 10 seconds
-
-  object CalculationRequestActorMock {
-    def props(desConnector: DesConnector, repository: BulkCalculationRepository, metrics: ApplicationMetrics) = Props(classOf[CalculationRequestActorMock], desConnector, repository, metrics)
-  }
 
   before {
     reset(mockDesConnector)
@@ -70,7 +66,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
       when(mockDesConnector.calculate(Matchers.any())).thenReturn(Future.successful(response))
       when(mockRepository.insertResponseByReference(Matchers.any(), Matchers.any(), Matchers.any())).thenReturn(Future.successful(true))
 
-      val actorRef = system.actorOf(CalculationRequestActorMock.props(mockDesConnector, mockRepository, mockMetrics))
+      val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockMetrics))
 
       within(testTimeout) {
 
@@ -84,7 +80,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
 
       when(mockDesConnector.calculate(Matchers.any())).thenThrow(new RuntimeException("The calculation failed"))
 
-      val actorRef = system.actorOf(CalculationRequestActorMock.props(mockDesConnector, mockRepository, mockMetrics))
+      val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockMetrics))
 
       within(testTimeout) {
 
@@ -103,7 +99,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
       when(mockDesConnector.calculate(Matchers.any())).thenReturn(Future.failed(ex))
       when(mockRepository.insertResponseByReference(Matchers.any(), Matchers.any(), Matchers.any())).thenReturn(Future.successful(true))
 
-      val actorRef = system.actorOf(CalculationRequestActorMock.props(mockDesConnector, mockRepository, mockMetrics))
+      val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockMetrics))
 
       within(testTimeout) {
 
@@ -121,7 +117,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
       when(mockDesConnector.getPersonDetails(Matchers.eq(nino))(Matchers.any[HeaderCarrier])).thenReturn(Future.successful(DesGetHiddenRecordResponse))
       when(mockRepository.insertResponseByReference(Matchers.any(), Matchers.any(), Matchers.any())).thenReturn(Future.successful(true))
 
-      val actorRef = system.actorOf(CalculationRequestActorMock.props(mockDesConnector, mockRepository, mockMetrics))
+      val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockMetrics))
 
       within(testTimeout) {
 
@@ -137,7 +133,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
 
     "get failure when message wrong type" in {
 
-      val actorRef = system.actorOf(CalculationRequestActorMock.props(mockDesConnector, mockRepository, mockMetrics))
+      val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockMetrics))
 
       within(testTimeout) {
 
@@ -148,7 +144,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
 
     "send STOP message to sender when receive the STOP message" in {
 
-      val actorRef = system.actorOf(CalculationRequestActorMock.props(mockDesConnector, mockRepository, mockMetrics))
+      val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockMetrics))
 
       within(testTimeout) {
 

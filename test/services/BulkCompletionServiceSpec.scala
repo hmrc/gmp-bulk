@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 HM Revenue & Customs
+ * Copyright 2020 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,8 +35,9 @@ import scala.concurrent.Future
 class BulkCompletionServiceSpec extends UnitSpec with MockitoSugar with GuiceOneAppPerSuite with BeforeAndAfterEach with MongoSpecSupport {
 
   lazy val bulkCalculationRespository =app.injector.instanceOf[BulkCalculationMongoRepository]
+  val mongoApi  = app.injector.instanceOf[play.modules.reactivemongo.ReactiveMongoComponent]
 
-  object TestBulkCompletionService extends BulkCompletionService {
+  object TestBulkCompletionService extends BulkCompletionService(bulkCalculationRespository, mongoApi ) {
     override lazy val repository = bulkCalculationRespository
   }
 
@@ -150,7 +151,7 @@ class BulkCompletionServiceSpec extends UnitSpec with MockitoSugar with GuiceOne
 
     "cant get a lock" in {
       val mockRepository = mock[BulkCalculationRepository]
-      object TestBulkCompletionService extends BulkCompletionService {
+      object TestBulkCompletionService extends BulkCompletionService(bulkCalculationRespository, mongoApi) {
         override lazy val repository = mockRepository
       }
 

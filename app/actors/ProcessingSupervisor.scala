@@ -20,19 +20,25 @@ import akka.actor._
 import akka.contrib.throttle.Throttler.{SetTarget, _}
 import akka.contrib.throttle.TimerBasedThrottler
 import config.ApplicationConfiguration
+import connectors.DesConnector
 import javax.inject.{Inject, Singleton}
+import metrics.ApplicationMetrics
 import play.api.Logger
-import play.modules.reactivemongo.MongoDbConnection
-import repositories.BulkCalculationRepository
+import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
 import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration) extends Actor with ActorUtils with MongoDbConnection {
+class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration,
+                                     bulkCalculationMongoRepository : BulkCalculationMongoRepository,
+                                     mongoApi : play.modules.reactivemongo.ReactiveMongoComponent,
+                                     desConnector : DesConnector,
+                                     metrics : ApplicationMetrics) extends Actor with ActorUtils {
 
-  val lockrepo = LockMongoRepository(db)
+  val lockrepo = LockMongoRepository(mongoApi.mongoConnector.db)
 
   val lockKeeper = new LockKeeper {
 
@@ -53,8 +59,8 @@ class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration
     // $COVERAGE-ON$
   }
   // $COVERAGE-OFF$
-  lazy val repository: BulkCalculationRepository = BulkCalculationRepository()
-  lazy val requestActor: ActorRef = context.actorOf(CalculationRequestActor.props, "calculation-requester")
+  lazy val repository: BulkCalculationRepository = bulkCalculationMongoRepository
+  lazy val requestActor: ActorRef = context.actorOf(Props(classOf[DefaultCalculationRequestActor], bulkCalculationMongoRepository, desConnector, metrics ), "calculation-requester")
 
   lazy val throttler: ActorRef = context.actorOf(Props(classOf[TimerBasedThrottler],
     applicationConfig.bulkProcessingTps msgsPer 1.seconds), "throttler")

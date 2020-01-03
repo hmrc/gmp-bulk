@@ -19,17 +19,16 @@ package repositories
 import java.util.concurrent.TimeUnit
 
 import com.google.inject.{Inject, Provider, Singleton}
-import config.{ApplicationConfig, ApplicationConfiguration}
+import config.ApplicationConfiguration
 import connectors.{EmailConnector, ProcessedUploadTemplate}
 import events.BulkEvent
 import metrics.ApplicationMetrics
 import models._
 import org.joda.time.{DateTime, LocalDateTime}
-import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.iteratee.{Iteratee, _}
-import play.api.libs.json.Json
-import play.api.{Logger, Play}
-import play.modules.reactivemongo.{MongoDbConnection, ReactiveMongoComponent}
+import play.api.libs.json.{JsObject, Json}
+import play.api.Logger
+import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.collections.GenericCollection
 import reactivemongo.api.commands.MultiBulkWriteResult
 import reactivemongo.api.indexes.{Index, IndexType}
@@ -51,15 +50,17 @@ import scala.util.{Failure, Success, Try}
 class BulkCalculationMongoRepositoryProvider @Inject()(component: ReactiveMongoComponent,
                                                        metrics: ApplicationMetrics,
                                                        auditConnector: AuditConnector,
+                                                       emailConnector : EmailConnector,
                                                        applicationConfig: ApplicationConfiguration)
   extends Provider[BulkCalculationMongoRepository] {
   override def get(): BulkCalculationMongoRepository = {
-    new BulkCalculationMongoRepository(metrics, auditConnector, applicationConfig)(component.mongoConnector.db)
+    new BulkCalculationMongoRepository(metrics, auditConnector, emailConnector : EmailConnector, applicationConfig)(component.mongoConnector.db)
   }
 }
 
-class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
+class BulkCalculationMongoRepository @Inject()(override val metrics: ApplicationMetrics,
                                                ac: AuditConnector,
+                                               override val emailConnector : EmailConnector,
                                                applicationConfiguration: ApplicationConfiguration)(implicit mongo: () => DefaultDB)
   extends ReactiveRepository[BulkCalculationRequest, BSONObjectID](
     "bulk-calculation",
@@ -68,28 +69,32 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
 
   override val auditConnector: AuditConnector = ac
 
+
+
   lazy val proxyCollection: GenericCollection[JSONSerializationPack.type] = collection
 
-    // $COVERAGE-OFF$
-    {
+  // $COVERAGE-OFF$
+  {
 
 
-      val childrenEnumerator: Enumerator[BSONDocument] = proxyCollection.find(Json.obj("bulkId" -> Json.obj("$exists" -> true), "isChild" -> Json.obj("$exists" -> false))).cursor[BSONDocument]().enumerator()
+    val childrenEnumerator: Enumerator[BSONDocument] = proxyCollection.find(Json.obj("bulkId" -> Json.obj("$exists" -> true), "isChild" -> Json.obj("$exists" -> false)), Option.empty[JsObject]).cursor[BSONDocument]().enumerator()
 
-      val processChildren: Iteratee[BSONDocument, Unit] = {
-        Iteratee.foreach { child =>
-          val childId = child.getAs[BSONObjectID]("_id")
-          val hasResponse = child.get("calculationResponse")
-          val hasValidRequest = child.get("validCalculationRequest")
-          val hasValidationErrors = child.get("validationErrors")
+    val processChildren: Iteratee[BSONDocument, Unit] = {
+      Iteratee.foreach { child =>
+        val childId = child.getAs[BSONObjectID]("_id")
+        val hasResponse = child.get("calculationResponse")
+        val hasValidRequest = child.get("validCalculationRequest")
+        val hasValidationErrors = child.get("validationErrors")
+        val selector = BSONDocument("_id" -> childId.get)
+        val data = BSONDocument("$set" -> BSONDocument("isChild" -> true, "hasResponse" -> hasResponse.isDefined, "hasValidRequest" -> hasValidRequest.isDefined, "hasValidationErrors" -> hasValidationErrors.isDefined))
 
-          proxyCollection.update(BSONDocument("_id" -> childId.get), BSONDocument("$set" -> BSONDocument("isChild" -> true, "hasResponse" -> hasResponse.isDefined, "hasValidRequest" -> hasValidRequest.isDefined, "hasValidationErrors" -> hasValidationErrors.isDefined)))
-        }
+        proxyCollection.update(ordered = false).one(selector, data, upsert = true)
       }
-
-      childrenEnumerator.run(processChildren)
     }
-    // $COVERAGE-ON$
+
+    childrenEnumerator.run(processChildren)
+  }
+  // $COVERAGE-ON$
 
   override def indexes: Seq[Index] = Seq(
     Index(Seq("createdAt" -> IndexType.Ascending), Some("bulkCalculationRequestExpiry"), options = BSONDocument("expireAfterSeconds" -> 2592000), sparse = true, background = true),
@@ -109,7 +114,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
     val startTime = System.currentTimeMillis()
     val selector = Json.obj("bulkId" -> bulkId, "lineId" -> lineId)
     val modifier = Json.obj("$set" -> Json.obj("calculationResponse" -> calculationResponse, "hasResponse" -> true))
-    val result = proxyCollection.update(selector, modifier)
+    val result = proxyCollection.update(ordered = false).one(selector, modifier)
 
     result onComplete {
       case _ => metrics.insertResponseByReferenceTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
@@ -132,7 +137,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
 
     val tryResult = Try {
 
-      val request = proxyCollection.find(Json.obj("uploadReference" -> uploadReference)).one[ProcessedBulkCalculationRequest]
+      val request = proxyCollection.find(Json.obj("uploadReference" -> uploadReference), Option.empty[JsObject]).one[ProcessedBulkCalculationRequest]
 
       val result = request.flatMap {
         case Some(br) => {
@@ -142,7 +147,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
             case CsvFilter.Successful => Json.obj("bulkId" -> br._id, "validationErrors" -> Json.obj("$exists" -> false), "calculationResponse.containsErrors" -> false)
             case _ => Json.obj("bulkId" -> br._id)
           }
-          proxyCollection.find(childQuery).sort(Json.obj("lineId" -> 1)).cursor[ProcessReadyCalculationRequest](ReadPreference.primary)
+          proxyCollection.find(childQuery, Option.empty[JsObject]).sort(Json.obj("lineId" -> 1)).cursor[ProcessReadyCalculationRequest](ReadPreference.primary)
             .collect[List](-1, Cursor.FailOnError[List[ProcessReadyCalculationRequest]]()).map {
             calcRequests => Some(br.copy(calculationRequests = calcRequests))
           }
@@ -176,7 +181,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
 
     val tryResult = Try {
 
-      val result = proxyCollection.find(Json.obj("uploadReference" -> uploadReference), Json.obj("reference" -> 1, "total" -> 1, "failed" -> 1, "userId" -> 1))
+      val result = proxyCollection.find(Json.obj("uploadReference" -> uploadReference), Some(Json.obj("reference" -> 1, "total" -> 1, "failed" -> 1, "userId" -> 1)))
         .cursor[BulkResultsSummary](ReadPreference.primary).collect[List](-1,Cursor.FailOnError[List[BulkResultsSummary]]())
       result onComplete {
         case _ => metrics.findSummaryByReferenceTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
@@ -204,7 +209,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
 
     val tryResult = Try {
       val result = proxyCollection
-        .find(Json.obj("userId" -> userId, "complete" -> true), Json.obj("uploadReference" -> 1, "reference" -> 1, "timestamp" -> 1, "processedDateTime" -> 1))
+        .find(Json.obj("userId" -> userId, "complete" -> true), Some(Json.obj("uploadReference" -> 1, "reference" -> 1, "timestamp" -> 1, "processedDateTime" -> 1)))
         .cursor[BulkPreviousRequest](ReadPreference.primary)
         .collect[List](-1, Cursor.FailOnError[List[BulkPreviousRequest]]())
 
@@ -234,7 +239,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
 
     val testResult = Try {
 
-      val incompleteBulk = proxyCollection.find(Json.obj("isParent" -> true, "complete" -> false)).sort(Json.obj("_id" -> 1)).cursor[ProcessedBulkCalculationRequest](ReadPreference.primary)
+      val incompleteBulk = proxyCollection.find(Json.obj("isParent" -> true, "complete" -> false), Option.empty[JsObject]).sort(Json.obj("_id" -> 1)).cursor[ProcessedBulkCalculationRequest](ReadPreference.primary)
         .collect[List](-1, Cursor.FailOnError[List[ProcessedBulkCalculationRequest]]())
 
       incompleteBulk.map {
@@ -244,7 +249,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
 
               val childRequests = proxyCollection.find(Json.obj("isChild" -> true, "hasValidationErrors" -> false, "bulkId" -> bulkRequest._id,
                 "hasValidRequest" -> true,
-                "hasResponse" -> false)).cursor[ProcessReadyCalculationRequest](ReadPreference.primary).collect[List](applicationConfiguration.bulkProcessingBatchSize, Cursor.FailOnError[List[ProcessReadyCalculationRequest]]())
+                "hasResponse" -> false), Option.empty[JsObject]).cursor[ProcessReadyCalculationRequest](ReadPreference.primary).collect[List](applicationConfiguration.bulkProcessingBatchSize, Cursor.FailOnError[List[ProcessReadyCalculationRequest]]())
 
               childRequests
             }
@@ -287,7 +292,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
     Logger.debug("[BulkCalculationRepository][findAndComplete]: starting ")
     val findResult = Try {
 
-      val incompleteBulk = proxyCollection.find(Json.obj("isParent" -> true, "complete" -> false)).sort(Json.obj("_id" -> 1))
+      val incompleteBulk = proxyCollection.find(Json.obj("isParent" -> true, "complete" -> false), Option.empty[JsObject]).sort(Json.obj("_id" -> 1))
         .cursor[ProcessedBulkCalculationRequest](ReadPreference.primary)
         .collect[List](-1,Cursor.FailOnError[List[ProcessedBulkCalculationRequest]]())
 
@@ -305,7 +310,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
               proxyCollection.count(Some(Json.obj("bulkId" -> bulkRequest._id, "isChild" -> true, "hasResponse" -> false, "hasValidationErrors" -> false, "hasValidRequest" -> true))) flatMap {
                 case result => result match {
                   case count if count == 0 =>
-                    val processedChildren = proxyCollection.find(Json.obj("isChild" -> true, "bulkId" -> bulkRequest._id))
+                    val processedChildren = proxyCollection.find(Json.obj("isChild" -> true, "bulkId" -> bulkRequest._id), Option.empty[JsObject])
                       .cursor[ProcessReadyCalculationRequest](ReadPreference.primary).collect[List](-1, Cursor.FailOnError[List[ProcessReadyCalculationRequest]]()).flatMap { allChildren =>
                       Future.successful(Some(bulkRequest.copy(calculationRequests = allChildren)))
                     }
@@ -342,7 +347,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
             val selector = Json.obj("uploadReference" -> request.get.uploadReference)
             val modifier = Json.obj("$set" -> Json.obj("complete" -> true, "total" -> totalRequests, "failed" -> failedRequests, "createdAt" -> BSONDateTime(DateTime.now().getMillis), "processedDateTime" -> LocalDateTime.now().toString))
 
-            val result = proxyCollection.update(selector, modifier)
+            val result = proxyCollection.update(ordered = false).one(selector, modifier)
 
             result.map {
               writeResult => Logger.debug(s"[BulkCalculationRepository][findAndComplete] : { result : $writeResult }")
@@ -375,7 +380,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
 
                   val childSelector = Json.obj("bulkId" -> request.get._id)
                   val childModifier = Json.obj("$set" -> Json.obj("createdAt" -> BSONDateTime(DateTime.now().getMillis)))
-                  val childResult = proxyCollection.update(childSelector, childModifier, multi = true)
+                  val childResult = proxyCollection.update(ordered = false).one(childSelector, childModifier, multi = true)
 
                   childResult.map {
                     childWriteResult => Logger.debug(s"[BulkCalculationRepository][findAndComplete] childResult: $childWriteResult")
@@ -407,7 +412,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
         Logger.error(s"[BulkCalculationRepository][findAndComplete] ${f.getMessage}", f)
         metrics.findAndCompleteTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
         Future.successful(false)
-      }.recover {
+        }.recover {
         // $COVERAGE-OFF$
         case e: Exception => {
           metrics.findAndCompleteTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
@@ -461,7 +466,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
             hasValidationErrors = c.hasErrors)
           }
 
-          val insertResult = proxyCollection.insert(strippedBulk).flatMap {_ =>
+          val insertResult = proxyCollection.insert(ordered = false).one(strippedBulk).flatMap {_ =>
             proxyCollection.insert(ordered = false).many[ProcessReadyCalculationRequest](bulkDocs)
           }
 
@@ -500,7 +505,7 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
 
     val tryResult = Try {
 
-      proxyCollection.find(Json.obj("uploadReference" -> uploadReference))
+      proxyCollection.find(Json.obj("uploadReference" -> uploadReference), Option.empty[JsObject])
         .cursor[BulkResultsSummary](ReadPreference.primary).collect[List](-1, Cursor.FailOnError[List[BulkResultsSummary]]())
     }
 
@@ -527,9 +532,9 @@ class BulkCalculationMongoRepository @Inject()(metrics: ApplicationMetrics,
 
 trait BulkCalculationRepository extends ReactiveRepository[BulkCalculationRequest, BSONObjectID] {
 
-  def metrics: ApplicationMetrics = Play.current.injector.instanceOf[ApplicationMetrics]
+  def metrics: ApplicationMetrics
 
-  val emailConnector: EmailConnector = Play.current.injector.instanceOf[EmailConnector]
+  val emailConnector: EmailConnector
   val auditConnector: AuditConnector
 
   def insertResponseByReference(reference: String, lineId: Int, calculationResponse: GmpBulkCalculationResponse): Future[Boolean]
@@ -547,14 +552,4 @@ trait BulkCalculationRepository extends ReactiveRepository[BulkCalculationReques
   def findAndComplete(): Future[Boolean]
 
   def insertBulkDocument(bulkCalculationRequest: BulkCalculationRequest): Future[Boolean]
-}
-
-object BulkCalculationRepository  {
-  // $COVERAGE-OFF$
-  implicit val db : scala.Function0[reactivemongo.api.DefaultDB] = (GuiceApplicationBuilder().build().injector.instanceOf[ReactiveMongoComponent]).mongoConnector.db
-
-  private lazy val repository = Play.current.injector.instanceOf[BulkCalculationMongoRepository]
-
-  // $COVERAGE-ON$
-  def apply(): BulkCalculationMongoRepository = repository
 }

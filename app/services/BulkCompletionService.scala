@@ -16,20 +16,19 @@
 
 package services
 
+import com.google.inject.Inject
 import play.api.Logger
-//import play.modules.reactivemongo.ReactiveMongoPlugin
-import play.modules.reactivemongo.MongoDbConnection
+import repositories.BulkCalculationMongoRepository
 import repositories.BulkCalculationRepository
 import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
-class BulkCompletionService extends MongoDbConnection{
+class BulkCompletionService @Inject() (bulkCalculationMongoRepository : BulkCalculationMongoRepository, mongoApi : play.modules.reactivemongo.ReactiveMongoComponent) {
 
   val connection = {
-    //ReactiveMongoPlugin.mongoConnector.db
-    db
+    mongoApi.mongoConnector.db
   }
 
   val lockrepo = LockMongoRepository(connection)
@@ -66,7 +65,7 @@ class BulkCompletionService extends MongoDbConnection{
   }
 
   // $COVERAGE-OFF$
-  lazy val repository: BulkCalculationRepository = BulkCalculationRepository()
+  lazy val repository: BulkCalculationRepository = bulkCalculationMongoRepository
   // $COVERAGE-ON$
 
 

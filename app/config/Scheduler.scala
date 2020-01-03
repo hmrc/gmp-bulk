@@ -18,11 +18,15 @@ package config
 
 import actors.{ActorUtils, ProcessingSupervisor}
 import akka.actor.{ActorSystem, Props}
+import connectors.DesConnector
 import javax.inject.{Inject, Singleton}
+import metrics.ApplicationMetrics
 import play.api.inject.DefaultApplicationLifecycle
 import play.api.{Application, Environment, Play}
+import repositories.BulkCalculationMongoRepository
 import services.BulkCompletionService
 import uk.gov.hmrc.play.scheduling.{ExclusiveScheduledJob, RunningOfScheduledJobs, ScheduledJob}
+
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -31,17 +35,21 @@ class Scheduler @Inject()(override val applicationLifecycle: DefaultApplicationL
                           actorSystem: ActorSystem,
                           env: Environment,
                           override val application: Application,
-                          applicationConfiguration: ApplicationConfiguration
+                          applicationConfiguration: ApplicationConfiguration,
+                          bulkCalculationMongoRepository : BulkCalculationMongoRepository,
+                          mongoApi : play.modules.reactivemongo.ReactiveMongoComponent, bulkCompletionService : BulkCompletionService,
+                          desConnector : DesConnector,
+                          metrics : ApplicationMetrics
                          )(implicit val ec: ExecutionContext) extends RunningOfScheduledJobs with ActorUtils {
 
   lazy val scheduledJobs: Seq[ScheduledJob] = {
     Seq(new ExclusiveScheduledJob {
-      lazy val processingSupervisor = actorSystem.actorOf(Props(classOf[ProcessingSupervisor], applicationConfiguration), "processing-supervisor")
+      lazy val processingSupervisor = actorSystem.actorOf(Props(classOf[ProcessingSupervisor], applicationConfiguration, bulkCalculationMongoRepository, mongoApi, desConnector, metrics), "processing-supervisor")
 
       override def name: String = "BulkProcesssingService"
 
       override def executeInMutex(implicit ec: ExecutionContext): Future[Result] = {
-        if(env.mode != "Test") {
+        if(!env.mode.equals("Test")) {
           processingSupervisor ! START
           Future.successful(Result("started"))
         }else {
@@ -56,8 +64,7 @@ class Scheduler @Inject()(override val applicationLifecycle: DefaultApplicationL
       new ExclusiveScheduledJob {
 
         override def executeInMutex(implicit ec: ExecutionContext): Future[Result] = {
-          if(env != "Test") {
-            val bulkCompletionService = Play.current.injector.instanceOf[BulkCompletionService]
+          if(!env.equals("Test")) {
             bulkCompletionService.checkForComplete()
             Future.successful(Result("started"))
           }else {

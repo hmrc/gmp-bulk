@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 HM Revenue & Customs
+ * Copyright 2020 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import play.api.libs.json.{JsString, Json}
 import play.api.mvc._
 import play.api.test.Helpers._
 import play.api.test.{FakeHeaders, FakeRequest}
-import repositories.BulkCalculationRepository
+import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.mongo.Awaiting
 
@@ -49,8 +49,9 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
   val csvGenerator = app.injector.instanceOf[CsvGenerator]
   val authConnector = mock[AuthConnector]
   val fakeAuthAction = FakeAuthAction(authConnector)
+  lazy val mockRepository = mock[BulkCalculationMongoRepository]
 
-  object TestBulkController extends BulkController(fakeAuthAction, mockEmailConnector, csvGenerator, stubMessagesControllerComponents()) {
+  object TestBulkController extends BulkController(fakeAuthAction, mockEmailConnector, csvGenerator, stubMessagesControllerComponents(), mockRepository) {
     override lazy val repository = mockRepo
   }
 

@@ -19,12 +19,13 @@ package actors
 import java.util.concurrent.TimeUnit
 
 import akka.actor._
+import com.google.inject.Inject
 import connectors.{DesConnector, DesGetHiddenRecordResponse}
 import metrics.ApplicationMetrics
 import models.{CalculationResponse, GmpBulkCalculationResponse, ProcessReadyCalculationRequest}
 import play.api.http.Status
 import play.api.{Logger, Play}
-import repositories.BulkCalculationRepository
+import repositories.BulkCalculationMongoRepository
 import uk.gov.hmrc.http.{HeaderCarrier, Upstream4xxResponse}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -32,7 +33,7 @@ import scala.util.{Failure, Success, Try}
 
 trait CalculationRequestActorComponent {
   val desConnector: DesConnector
-  val repository: BulkCalculationRepository
+  val repository: BulkCalculationMongoRepository
   val metrics: ApplicationMetrics
 }
 
@@ -143,19 +144,8 @@ class CalculationRequestActor extends Actor with ActorUtils {
   }
 }
 
-class DefaultCalculationRequestActor extends CalculationRequestActor with DefaultCalculationRequestComponent
 
-trait DefaultCalculationRequestComponent extends CalculationRequestActorComponent {
-  // $COVERAGE-OFF$
-  override val desConnector = Play.current.injector.instanceOf[DesConnector]
-  override val repository = BulkCalculationRepository()
-  override val metrics = Play.current.injector.instanceOf[ApplicationMetrics]
-  // $COVERAGE-ON$
-}
-
-object CalculationRequestActor {
-  // $COVERAGE-OFF$
-  def props = Props(classOf[DefaultCalculationRequestActor])
-
-  // $COVERAGE-ON$
-}
+class DefaultCalculationRequestActor @Inject()(override val repository : BulkCalculationMongoRepository,
+                                               override val desConnector : DesConnector,
+                                               override val metrics : ApplicationMetrics
+                                              ) extends CalculationRequestActor with CalculationRequestActorComponent
