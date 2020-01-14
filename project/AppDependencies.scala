@@ -5,8 +5,8 @@ object AppDependencies {
 
   val compile: Seq[ModuleID] = Seq(
     ws,
-    "uk.gov.hmrc" %% "simple-reactivemongo" % "7.20.0-play-26",
-    "org.reactivemongo" %% "reactivemongo-iteratees" % "0.17.1",
+    "uk.gov.hmrc" %% "simple-reactivemongo" % "7.22.0-play-26",
+    "org.reactivemongo" %% "reactivemongo-iteratees" % "0.18.6",
     "uk.gov.hmrc" %% "bootstrap-play-26" % "1.3.0",
     "uk.gov.hmrc" %% "domain" % "5.6.0-play-26",
     "com.typesafe.akka" %% "akka-contrib" % "2.5.23",
@@ -31,7 +31,7 @@ object AppDependencies {
         "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2",
         "org.pegdown" % "pegdown" % "1.6.0",
         "uk.gov.hmrc" %% "reactivemongo-test" % "4.15.0-play-26",
-        "org.reactivemongo" %% "reactivemongo-iteratees" % "0.17.1",
+        "org.reactivemongo" %% "reactivemongo-iteratees" % "0.18.6",
         "com.typesafe.akka" %% "akka-testkit" % "2.5.23",
         "org.mockito" % "mockito-all" % "1.9.5",
         "uk.gov.hmrc" %% "tax-year" % "0.6.0",
