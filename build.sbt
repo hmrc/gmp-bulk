@@ -5,6 +5,21 @@ import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin.publishingSettings
 import java.time.LocalDate
 import de.heikoseeberger.sbtheader.HeaderPlugin.autoImport.{HeaderLicense, headerLicense}
 
+val akkaVersion     = "2.5.23"
+
+val akkaHttpVersion = "10.0.15"
+
+
+dependencyOverrides += "com.typesafe.akka" %% "akka-stream"    % akkaVersion
+
+dependencyOverrides += "com.typesafe.akka" %% "akka-protobuf"  % akkaVersion
+
+dependencyOverrides += "com.typesafe.akka" %% "akka-slf4j"     % akkaVersion
+
+dependencyOverrides += "com.typesafe.akka" %% "akka-actor"     % akkaVersion
+
+dependencyOverrides += "com.typesafe.akka" %% "akka-http-core" % akkaHttpVersion
+
 val appName = "gmp-bulk"
 
 lazy val scoverageSettings = Seq(
