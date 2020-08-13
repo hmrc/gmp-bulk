@@ -24,7 +24,7 @@ import connectors.{DesConnector, DesGetHiddenRecordResponse}
 import metrics.ApplicationMetrics
 import models.{CalculationResponse, GmpBulkCalculationResponse, ProcessReadyCalculationRequest}
 import play.api.http.Status
-import play.api.{Logger, Play}
+import play.api.Logger
 import repositories.BulkCalculationMongoRepository
 import uk.gov.hmrc.http.{HeaderCarrier, Upstream4xxResponse}
 

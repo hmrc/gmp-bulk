@@ -18,7 +18,6 @@ package config
 
 import javax.inject.Inject
 import play.api.Configuration
-import scala.concurrent.duration.FiniteDuration
 
 trait ApplicationConfig {
   val bulkProcessingBatchSize: Int

@@ -20,13 +20,12 @@ import helpers.RandomNino
 import models._
 import org.joda.time.{LocalDate, LocalDateTime}
 import org.mockito.Mockito._
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
-import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
+import org.scalatestplus.play.PlaySpec
 import play.api.i18n.{Messages, MessagesImpl}
 import uk.gov.hmrc.mongo.Awaiting
 import uk.gov.hmrc.play.bootstrap.tools.Stubs.stubMessagesControllerComponents
-//import play.api.Play.current
 import play.api.i18n.Messages.Implicits._
 
 class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting with MockitoSugar {

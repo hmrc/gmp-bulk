@@ -22,8 +22,7 @@ import helpers.RandomNino
 import models.BulkCalculationRequest
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
-import org.scalatest.mockito.MockitoSugar
-import org.scalatestplus.play.OneServerPerSuite
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.libs.json.Json
 import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}

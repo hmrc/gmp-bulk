@@ -26,7 +26,7 @@ import play.api.{Configuration, Environment, Logger}
 import uk.gov.hmrc.circuitbreaker.{CircuitBreakerConfig, UsingCircuitBreaker}
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
-import uk.gov.hmrc.play.bootstrap.http.HttpClient
+import uk.gov.hmrc.http.HttpClient
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -89,7 +89,7 @@ class DesConnector @Inject()(environment: Environment,
             case status if status >= 500 && status < 600 => throw new BreakerException
             case TOO_MANY_REQUESTS => throw new BreakerException
             case 499 => throw new BreakerException
-            case _ => throw Upstream4xxResponse(s"An error status $errorStatus was encountered", errorStatus, errorStatus)
+            case _ => throw UpstreamErrorResponse(s"An error status $errorStatus was encountered", errorStatus, errorStatus)
           }
         }
       }

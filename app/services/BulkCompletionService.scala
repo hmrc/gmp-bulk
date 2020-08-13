@@ -46,19 +46,19 @@ class BulkCompletionService @Inject() (bulkCalculationMongoRepository : BulkCalc
       repo.lock(lockId, serverId, forceLockReleaseAfter)
         .flatMap { acquired =>
           if (acquired)
-            body.map { x => Logger.debug("Got completion lock"); Some(x) }.recover {
+            body.map { x => Logger.debug("Got completion lock"); Some(x) }(global).recover {
               case e => Logger.error("Exception getting lock: " + e.getMessage, e)
                 throw e
-            }
+            }(global)
           else {
             Logger.debug("Couldnt get lock");
             Future.successful(None)
           }
-        }.recoverWith { case ex => {
+        }(global).recoverWith { case ex => {
         Logger.error("Exception getting lock: " + ex.getMessage, ex)
-        repo.releaseLock(lockId, serverId).flatMap(_ => Future.failed(ex))
+        repo.releaseLock(lockId, serverId).flatMap(_ => Future.failed(ex))(global)
       }
-      }
+      }(global)
     }
 
     // $COVERAGE-ON$

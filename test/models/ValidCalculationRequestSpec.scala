@@ -18,9 +18,10 @@ package models
 
 import helpers.RandomNino
 import org.scalatest.MustMatchers
-import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
+import org.scalatestplus.play.guice.GuiceOneAppPerSuite
+import org.scalatestplus.play.PlaySpec
 
-class ValidCalculationRequestSpec extends PlaySpec with OneAppPerSuite with MustMatchers {
+class ValidCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite with MustMatchers {
 
   private val nino = RandomNino.generate
 

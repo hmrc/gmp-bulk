@@ -34,7 +34,7 @@ import play.api.test.Helpers._
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.http.logging.SessionId
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
-import uk.gov.hmrc.play.bootstrap.http.HttpClient
+import uk.gov.hmrc.http.HttpClient
 import utils.WireMockHelper
 
 import scala.collection.JavaConverters._
@@ -123,7 +123,7 @@ class DesConnectorSpec extends PlaySpec with OneServerPerSuite with WireMockHelp
         val url = s"/pensions/individuals/gmp/scon/S/1234567/T/nino/$nino/surname/BIX/firstname/B/calculation/"
         stubServiceGet(url, NOT_FOUND, "", ("request_earnings" -> "1"), ("calctype" -> "0"))
 
-        intercept[Upstream4xxResponse] {
+        intercept[UpstreamErrorResponse] {
           await(calculate(request))
         }
       }
@@ -137,7 +137,7 @@ class DesConnectorSpec extends PlaySpec with OneServerPerSuite with WireMockHelp
 
         val result = calculate(ValidCalculationRequest("S1401234Q", nino, "Smith", "Bill", None, None, None, None, None, None))
 
-        intercept[Upstream4xxResponse] {
+        intercept[UpstreamErrorResponse] {
           await(result)
         }
         Mockito.verify(metrics).registerFailedRequest()
