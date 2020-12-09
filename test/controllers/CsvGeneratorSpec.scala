@@ -26,7 +26,6 @@ import org.scalatestplus.play.PlaySpec
 import play.api.i18n.{Messages, MessagesImpl}
 import uk.gov.hmrc.mongo.Awaiting
 import uk.gov.hmrc.play.bootstrap.tools.Stubs.stubMessagesControllerComponents
-import play.api.i18n.Messages.Implicits._
 
 class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting with MockitoSugar {
 
@@ -88,7 +87,6 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting w
 
       val csvRows = s"""gmp.success,S2730000B,$nino,John,Smith,ref1,gmp.calc_type.leaving,,$date,,gmp.generic.no,3.12,1.23,,,$date,$date,3.12,1.23,,,,,,,"""
       val columnHeaders = s"gmp.status,${messages("gmp.bulk.csv.headers")},${messages("gmp.bulk.totals.headers")},$periodColumns"
-      val headerCount = columnHeaders.split(",").size
       val guidanceText = s"${messages("gmp.bulk.csv.guidance")},,,,,,,,,,,,"
 
       val lines = TestCsvGenerator.generateCsv(bulkCalculationRequest, Some(CsvFilter.All)) split "\n"
@@ -567,7 +565,6 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting w
     }
 
     "not show reval rate for calctype 1 and SM, where DOL and reval date dates exist in the same tax year, reval date after current date" in {
-      val yesterdaysDate = LocalDate.now.minusDays(1)
       val expectedResult = s"gmp.success,S2730000B,${nino},John,Smith,ref1,gmp.calc_type.specific_date,03/03/2017,01/01/2017,,gmp.generic.no,3.12,1.23,,,07/03/1983,03/03/2017,3.12,1.23,,,,,,,"
       val validCalcRequest = ValidCalculationRequest("S2730000B", s"${nino}", "Smith", "John", Some("ref1"), Some(1), Some(LocalDate.parse("2017-01-01").toString), None, Some(0), Some(LocalDate.parse("2017-03-03").toString()), Some(false))
       val calcResponse = GmpBulkCalculationResponse(List(CalculationPeriod(Some(LocalDate.parse("1983-03-07")), LocalDate.parse("2017-03-03"), "3.12", "1.23", 1, 0, Some(1), Some("0.00"), Some("0.00"), Some(0), None)), 0, None, None, None)

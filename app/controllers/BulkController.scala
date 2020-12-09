@@ -21,6 +21,7 @@ import connectors.{EmailConnector, ReceivedUploadTemplate}
 import controllers.auth.AuthAction
 import javax.inject.Singleton
 import models._
+import play.api.Logger
 import play.api.i18n.{Messages, MessagesImpl}
 import play.api.libs.json.Json
 import play.api.mvc.MessagesControllerComponents
@@ -55,15 +56,20 @@ class BulkController @Inject()(authAction: AuthAction,
 
   def getPreviousRequests(userId: String) = authAction.async {
     implicit request =>
+    {
+      Logger.debug(s"Request received: ${request}")
       repository.findByUserId(userId).map {
         case Some(x) => {
           Ok(Json.toJson(x))
         }
+        case _ => NotFound
       }
+    }
   }
 
   def getResultsSummary(userId: String, uploadReference: String) = authAction.async {
-    implicit request =>
+    implicit request => {
+      Logger.debug(s"Request received: ${request}")
       repository.findSummaryByReference(uploadReference).map {
         case Some(result) => userId match {
           case result.userId => Ok(Json.toJson(result))
@@ -71,11 +77,13 @@ class BulkController @Inject()(authAction: AuthAction,
         }
         case _ => NotFound
       }
+    }
 
   }
 
   def getCalculationsAsCsv(userId: String, reference: String, csvFilter: CsvFilter) = authAction.async {
-    implicit request =>
+    implicit request => {
+      Logger.debug(s"Request received: ${request}")
       repository.findByReference(reference, csvFilter).map {
         case Some(result) => userId match {
           case result.userId => {
@@ -86,10 +94,12 @@ class BulkController @Inject()(authAction: AuthAction,
         }
         case _ => NotFound
       }
+    }
   }
 
   def getContributionsAndEarningsAsCsv(userId: String, reference: String) = authAction.async {
-    implicit request =>
+    implicit request => {
+      Logger.debug(s"Request received: ${request}")
       repository.findByReference(reference).map {
         case Some(result) => userId match {
           case result.userId => {
@@ -100,5 +110,6 @@ class BulkController @Inject()(authAction: AuthAction,
         }
         case _ => NotFound
       }
+    }
   }
 }
