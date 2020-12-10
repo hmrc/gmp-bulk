@@ -64,6 +64,6 @@ lazy val microservice = Project(appName, file("."))
       "-feature",
       "-unchecked",
       "-language:implicitConversions",
-      "-P:silencer:pathFilters=views;routes;TestStorage"
+      "-P:silencer:pathFilters=routes;TestStorage"
     ))
   

@@ -21,7 +21,6 @@ import connectors.{EmailConnector, ReceivedUploadTemplate}
 import controllers.auth.AuthAction
 import javax.inject.Singleton
 import models._
-import play.api.Logger
 import play.api.i18n.{Messages, MessagesImpl}
 import play.api.libs.json.Json
 import play.api.mvc.MessagesControllerComponents
@@ -55,9 +54,7 @@ class BulkController @Inject()(authAction: AuthAction,
   }
 
   def getPreviousRequests(userId: String) = authAction.async {
-    implicit request =>
-    {
-      Logger.debug(s"Request received: ${request}")
+    _ =>  {
       repository.findByUserId(userId).map {
         case Some(x) => {
           Ok(Json.toJson(x))
@@ -68,8 +65,7 @@ class BulkController @Inject()(authAction: AuthAction,
   }
 
   def getResultsSummary(userId: String, uploadReference: String) = authAction.async {
-    implicit request => {
-      Logger.debug(s"Request received: ${request}")
+    _ => {
       repository.findSummaryByReference(uploadReference).map {
         case Some(result) => userId match {
           case result.userId => Ok(Json.toJson(result))
@@ -82,8 +78,7 @@ class BulkController @Inject()(authAction: AuthAction,
   }
 
   def getCalculationsAsCsv(userId: String, reference: String, csvFilter: CsvFilter) = authAction.async {
-    implicit request => {
-      Logger.debug(s"Request received: ${request}")
+    _ => {
       repository.findByReference(reference, csvFilter).map {
         case Some(result) => userId match {
           case result.userId => {
@@ -98,8 +93,7 @@ class BulkController @Inject()(authAction: AuthAction,
   }
 
   def getContributionsAndEarningsAsCsv(userId: String, reference: String) = authAction.async {
-    implicit request => {
-      Logger.debug(s"Request received: ${request}")
+    _ => {
       repository.findByReference(reference).map {
         case Some(result) => userId match {
           case result.userId => {
