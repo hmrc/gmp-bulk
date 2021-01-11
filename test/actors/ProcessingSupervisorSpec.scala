@@ -126,7 +126,7 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
         processingSupervisor ! START
         throttlerProbe.expectMsgClass(classOf[SetTarget])
         throttlerProbe.expectMsg(STOP)
-        processingSupervisor ! STOP // simulate stop coming from calc requestor
+        processingSupervisor ! STOP // simulate stop coming from calc requestor...
       }
 
     }
