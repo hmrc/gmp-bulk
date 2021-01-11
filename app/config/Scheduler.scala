@@ -28,7 +28,6 @@ import services.BulkCompletionService
 import uk.gov.hmrc.play.scheduling.{ExclusiveScheduledJob, RunningOfScheduledJobs, ScheduledJob}
 
 import scala.concurrent.duration._
-import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton

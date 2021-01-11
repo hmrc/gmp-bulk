@@ -22,7 +22,7 @@ case class CsvFilter(filterType: String) {
     this match {
       case CsvFilter.All => "all"
       case CsvFilter.Successful => "total_GMP"
-      case _ => "no_total_GMP"
+      case CsvFilter.Failed => "no_total_GMP"
     }
   }
 }

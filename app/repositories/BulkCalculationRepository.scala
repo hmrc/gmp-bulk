@@ -152,7 +152,6 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
             calcRequests => Some(br.copy(calculationRequests = calcRequests))
           }
         }
-        case _ => Future.failed(new Exception("No ProcessedBulkCalculationRequest found"))
       }
 
       result onComplete {
@@ -375,9 +374,9 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
                       case x if x.validCalculationRequest.isDefined && x.calculationResponse.isDefined => x.validCalculationRequest.get.calctype.get
                     }
                   ))
-                  resultsEventResult.failed.foreach({
+                  resultsEventResult.onFailure {
                     case e: Throwable => Logger.error(s"[BulkCalculationRepository][findAndComplete] resultsEventResult: ${e.getMessage}", e)
-                  })
+                  }
 
                   val childSelector = Json.obj("bulkId" -> request.get._id)
                   val childModifier = Json.obj("$set" -> Json.obj("createdAt" -> BSONDateTime(DateTime.now().getMillis)))

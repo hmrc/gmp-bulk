@@ -17,6 +17,7 @@
 package controllers.auth
 
 import akka.util.Timeout
+import controllers.auth.AuthAction
 import org.mockito.Matchers.any
 import org.mockito.Mockito._
 import org.scalatestplus.mockito.MockitoSugar
@@ -28,8 +29,8 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.status
 import uk.gov.hmrc.auth.core.{AuthConnector, MissingBearerToken}
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.language.postfixOps
 import scala.concurrent.duration._
 import uk.gov.hmrc.play.bootstrap.tools.Stubs.stubMessagesControllerComponents
 

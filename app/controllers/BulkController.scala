@@ -54,18 +54,16 @@ class BulkController @Inject()(authAction: AuthAction,
   }
 
   def getPreviousRequests(userId: String) = authAction.async {
-    _ =>  {
+    implicit request =>
       repository.findByUserId(userId).map {
         case Some(x) => {
           Ok(Json.toJson(x))
         }
-        case _ => NotFound
       }
-    }
   }
 
   def getResultsSummary(userId: String, uploadReference: String) = authAction.async {
-    _ => {
+    implicit request =>
       repository.findSummaryByReference(uploadReference).map {
         case Some(result) => userId match {
           case result.userId => Ok(Json.toJson(result))
@@ -73,12 +71,11 @@ class BulkController @Inject()(authAction: AuthAction,
         }
         case _ => NotFound
       }
-    }
 
   }
 
   def getCalculationsAsCsv(userId: String, reference: String, csvFilter: CsvFilter) = authAction.async {
-    _ => {
+    implicit request =>
       repository.findByReference(reference, csvFilter).map {
         case Some(result) => userId match {
           case result.userId => {
@@ -89,11 +86,10 @@ class BulkController @Inject()(authAction: AuthAction,
         }
         case _ => NotFound
       }
-    }
   }
 
   def getContributionsAndEarningsAsCsv(userId: String, reference: String) = authAction.async {
-    _ => {
+    implicit request =>
       repository.findByReference(reference).map {
         case Some(result) => userId match {
           case result.userId => {
@@ -104,6 +100,5 @@ class BulkController @Inject()(authAction: AuthAction,
         }
         case _ => NotFound
       }
-    }
   }
 }

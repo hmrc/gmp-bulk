@@ -37,6 +37,7 @@ import uk.gov.hmrc.mongo.Awaiting
 
 import scala.concurrent.Future
 import uk.gov.hmrc.play.bootstrap.tools.Stubs.stubMessagesControllerComponents
+import play.api.i18n.Messages.Implicits._
 
 class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting with MockitoSugar {
 
@@ -176,6 +177,8 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
     }
 
     "getPreviousRequests" must {
+
+      val createdAt = 1464191829716L
 
       "retrieve list of previous bulk calculation requests" in {
         when(mockRepo.findByUserId(Matchers.any())).thenReturn(Future.successful(Option(List(BulkPreviousRequest("uploadRef", "ref", LocalDateTime.now, LocalDateTime.now)))))

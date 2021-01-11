@@ -15,9 +15,7 @@ object AppDependencies {
     "uk.gov.hmrc" %% "reactive-circuit-breaker" % "3.5.0",
     "uk.gov.hmrc" %% "tax-year" % "1.1.0",
     "uk.gov.hmrc" %% "auth-client" % "3.0.0-play-26",
-    "com.typesafe.play" %% "play-json-joda" % "2.9.0",
-    compilerPlugin("com.github.ghik" % "silencer-plugin" % "1.7.1" cross CrossVersion.full),
-    "com.github.ghik" % "silencer-lib" % "1.7.1" % Provided cross CrossVersion.full
+    "com.typesafe.play" %% "play-json-joda" % "2.9.0"
   )
 
   trait TestDependencies {
