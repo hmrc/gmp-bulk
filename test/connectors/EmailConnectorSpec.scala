@@ -20,12 +20,12 @@ import org.joda.time.LocalDate
 import org.mockito.ArgumentCaptor
 import org.mockito.Matchers._
 import org.mockito.Mockito._
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfter, _}
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.play.{PlaySpec}
 import play.api.Environment
-import uk.gov.hmrc.http.{HeaderCarrier, HttpPost, HttpResponse}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.http.HttpClient
 
@@ -99,7 +99,6 @@ class EmailConnectorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoS
 
         "must return a false result" in {
           val template = ReceivedUploadTemplate("joe@bloggs.com", "upload-ref")
-          val requestCaptor = ArgumentCaptor.forClass(classOf[SendTemplatedEmailRequest])
 
           when(mockHttp.POST[SendTemplatedEmailRequest, HttpResponse](anyString, any[SendTemplatedEmailRequest], any[Seq[(String, String)]])(any(), any(), any[HeaderCarrier], any[ExecutionContext]))
             .thenReturn(Future.successful(HttpResponse(400, "")))
@@ -134,7 +133,7 @@ class EmailConnectorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoS
         when(mockHttp.POST[SendTemplatedEmailRequest, HttpResponse](anyString, requestCaptor.capture(), any[Seq[(String, String)]])(any(), any(), any[HeaderCarrier], any[ExecutionContext]))
           .thenReturn(Future.successful(HttpResponse(202, "")))
 
-        val result = Await.result(new TestEmailConnector().sendProcessedTemplatedEmail(template), 5 seconds)
+        Await.result(new TestEmailConnector().sendProcessedTemplatedEmail(template), 5 seconds)
 
         requestCaptor.getValue.to must contain("joe@bloggs.com")
       }
@@ -146,7 +145,7 @@ class EmailConnectorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoS
         when(mockHttp.POST[SendTemplatedEmailRequest, HttpResponse](anyString, requestCaptor.capture(), any[Seq[(String, String)]])(any(), any(), any[HeaderCarrier], any[ExecutionContext]))
           .thenReturn(Future.successful(HttpResponse(202, "")))
 
-        val result = Await.result(new TestEmailConnector().sendProcessedTemplatedEmail(template), 5 seconds)
+        Await.result(new TestEmailConnector().sendProcessedTemplatedEmail(template), 5 seconds)
 
         requestCaptor.getValue.parameters must contain("fileUploadReference" -> "upload-ref")
       }
@@ -158,7 +157,7 @@ class EmailConnectorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoS
         when(mockHttp.POST[SendTemplatedEmailRequest, HttpResponse](anyString, requestCaptor.capture(), any[Seq[(String, String)]])(any(), any(), any[HeaderCarrier], any[ExecutionContext]))
           .thenReturn(Future.successful(HttpResponse(202, "")))
 
-        val result = Await.result(new TestEmailConnector().sendProcessedTemplatedEmail(template), 5 seconds)
+        Await.result(new TestEmailConnector().sendProcessedTemplatedEmail(template), 5 seconds)
 
         requestCaptor.getValue.parameters must contain("uploadDate" -> date.toString("dd MMMM yyyy"))
       }
@@ -170,7 +169,7 @@ class EmailConnectorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoS
         when(mockHttp.POST[SendTemplatedEmailRequest, HttpResponse](anyString, requestCaptor.capture(), any[Seq[(String, String)]])(any(), any(), any[HeaderCarrier], any[ExecutionContext]))
           .thenReturn(Future.successful(HttpResponse(202, "")))
 
-        val result = Await.result(new TestEmailConnector().sendProcessedTemplatedEmail(template), 5 seconds)
+        Await.result(new TestEmailConnector().sendProcessedTemplatedEmail(template), 5 seconds)
 
         requestCaptor.getValue.parameters must contain("userId" -> "*****567")
       }

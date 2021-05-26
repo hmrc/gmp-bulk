@@ -36,7 +36,7 @@ lazy val plugins : Seq[Plugins] = Seq(
 lazy val microservice = Project(appName, file("."))
   .enablePlugins(plugins : _*)
   .settings(headerLicense := {Some(HeaderLicense.ALv2(LocalDate.now().getYear.toString, "HM Revenue & Customs"))})
-  .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning, SbtArtifactory, SbtDistributablesPlugin)
+  .enablePlugins(SbtDistributablesPlugin)
   .disablePlugins(sbt.plugins.JUnitXmlReportPlugin)
   .settings(scoverageSettings,
     majorVersion := 2,
@@ -45,17 +45,16 @@ lazy val microservice = Project(appName, file("."))
     defaultSettings(),
     routesImport += "extensions.Binders._",
     libraryDependencies ++= AppDependencies.all,
-    parallelExecution in Test := false,
-    fork in Test := false,
+    Test / parallelExecution := false,
+    Test / fork := false,
     retrieveManaged := true,
     PlayKeys.playDefaultPort := 9955,
     routesGenerator := InjectedRoutesGenerator,
     resolvers += Resolver.bintrayRepo("hmrc", "releases"),
     resolvers += Resolver.typesafeRepo("releases"),
-    resolvers += Resolver.jcenterRepo,
     resolvers += "hmrc-releases" at "https://artefacts.tax.service.gov.uk/artifactory/hmrc-releases/"
   )
-  .settings(scalaVersion := "2.12.11")
+  .settings(scalaVersion := "2.12.13")
   .settings(
     scalacOptions ++= List(
       "-Yrangepos",

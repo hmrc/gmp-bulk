@@ -19,7 +19,7 @@ package models
 import com.kenshoo.play.metrics.PlayModule
 import helpers.RandomNino
 import org.joda.time.LocalDate
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfter, MustMatchers}
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.play.PlaySpec

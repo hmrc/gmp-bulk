@@ -26,7 +26,7 @@ import models.{CalculationResponse, GmpBulkCalculationResponse, ProcessReadyCalc
 import play.api.http.Status
 import play.api.Logger
 import repositories.BulkCalculationMongoRepository
-import uk.gov.hmrc.http.{HeaderCarrier, Upstream4xxResponse, Upstream5xxResponse, UpstreamErrorResponse}
+import uk.gov.hmrc.http.{Upstream4xxResponse, Upstream5xxResponse}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
@@ -47,7 +47,7 @@ class CalculationRequestActor extends Actor with ActorUtils {
       val origSender = sender
       val startTime = System.currentTimeMillis()
 
-      desConnector.getPersonDetails(request.validCalculationRequest.get.nino)(HeaderCarrier()) map {
+      desConnector.getPersonDetails(request.validCalculationRequest.get.nino) map {
         case DesGetHiddenRecordResponse =>
 
           repository.insertResponseByReference(request.bulkId, request.lineId,

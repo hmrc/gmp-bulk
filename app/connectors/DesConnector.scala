@@ -124,7 +124,7 @@ class DesConnector @Inject()(environment: Environment,
     }
   }
 
-  def getPersonDetails(nino: String)(implicit hc: HeaderCarrier): Future[DesGetResponse] = {
+  def getPersonDetails(nino: String): Future[DesGetResponse] = {
 
     val newHc = HeaderCarrier(extraHeaders = Seq(
       "Gov-Uk-Originator-Id" -> servicesConfig.getConfString("des.originator-id",""),
