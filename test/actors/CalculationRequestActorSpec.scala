@@ -95,7 +95,6 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
     "insert a failed response when a 400 code is returned from DES" in {
 
       val ex = UpstreamErrorResponse("Call to Individual Pension calculation on NPS Service failed with status code 400", 400, 400)
-      when(ex.reportAs) thenReturn 400
 
       when(mockDesConnector.calculate(Matchers.any())).thenReturn(Future.failed(ex))
       when(mockRepository.insertResponseByReference(Matchers.any(), Matchers.any(), Matchers.any())).thenReturn(Future.successful(true))

@@ -54,7 +54,7 @@ lazy val microservice = Project(appName, file("."))
     resolvers += Resolver.typesafeRepo("releases"),
     resolvers += "hmrc-releases" at "https://artefacts.tax.service.gov.uk/artifactory/hmrc-releases/"
   )
-  .settings(scalaVersion := "2.12.13")
+  .settings(scalaVersion := "2.12.12")
   .settings(
     scalacOptions ++= List(
       "-Yrangepos",
