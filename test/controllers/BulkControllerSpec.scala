@@ -112,7 +112,6 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
 
         "return an accepted status code" in {
           when(mockRepo.insertBulkDocument(Matchers.any())).thenReturn(Future.successful(true))
-          //val fakeRequest = FakeRequest(method = "POST", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = Json.parse(json))
           val fakeRequest = FakeRequest(method = "POST", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = Json.parse(json))
           val result = TestBulkController.post("USER_ID").apply(fakeRequest)
           status(result) must be(OK)
@@ -120,7 +119,6 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
 
         "return conflict when inserting a duplicate" in {
           when(mockRepo.insertBulkDocument(Matchers.any())).thenReturn(Future.successful(false))
-          //val fakeRequest = FakeRequest(method = "POST", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = Json.parse(json))
           val fakeRequest = FakeRequest(method = "POST", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = Json.parse(json))
           val result = TestBulkController.post("USER_ID").apply(fakeRequest)
           status(result) must be(CONFLICT)
@@ -132,7 +130,6 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
 
             when(mockRepo.insertBulkDocument(Matchers.any())).thenReturn(Future.failed(new RuntimeException("Exception")))
 
-            //val fakeRequest = FakeRequest(method = "POST", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = Json.parse(json))
             val fakeRequest = FakeRequest(method = "POST", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = Json.parse(json))
             val result = TestBulkController.post("USER_ID").apply(fakeRequest)
             intercept[RuntimeException] {
@@ -145,9 +142,8 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
         "send a file received notification email to the user" in {
           val c = ArgumentCaptor.forClass(classOf[ReceivedUploadTemplate])
           when(mockEmailConnector.sendReceivedTemplatedEmail(Matchers.any())(Matchers.any())).thenReturn(Future.successful(true))
-          //val fakeRequest = FakeRequest(method = "POST", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = Json.parse(json))
           val fakeRequest = FakeRequest(method = "POST", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = Json.parse(json))
-          val result = TestBulkController.post("USER_ID")(fakeRequest)
+          TestBulkController.post("USER_ID")(fakeRequest)
           verify(mockEmailConnector).sendReceivedTemplatedEmail(c.capture())(Matchers.any())
           c.getValue.email must be("test@test.com")
           c.getValue.uploadReference must be("REF1234")
@@ -157,7 +153,6 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
       "sending incorrect data" must {
 
         "return a bad request status code" in {
-          //val fakeRequest = FakeRequest(method = "POST", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = Json.toJson("""{ "random" : "json" }"""))
           val fakeRequest = FakeRequest(method = "POST", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = Json.toJson("""{ "random" : "json" }"""))
           val result = TestBulkController.post("USER_ID").apply(fakeRequest)
           status(result) must be(BAD_REQUEST)
@@ -167,7 +162,6 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
       "sending no data" must {
 
         "return a bad request status code" in {
-          //val fakeRequest = FakeRequest(method = "POST", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = Json.toJson(""""""))
           val fakeRequest = FakeRequest(method = "POST", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = Json.toJson(""""""))
           val result = TestBulkController.post("USER_ID").apply(fakeRequest)
           status(result) must be(BAD_REQUEST)
@@ -179,7 +173,6 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
 
       "retrieve list of previous bulk calculation requests" in {
         when(mockRepo.findByUserId(Matchers.any())).thenReturn(Future.successful(Option(List(BulkPreviousRequest("uploadRef", "ref", LocalDateTime.now, LocalDateTime.now)))))
-        //val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = AnyContentAsEmpty)
         val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = AnyContentAsEmpty)
         val result = TestBulkController.getPreviousRequests("USER_ID").apply(fakeRequest)
         status(result) must be(OK)
@@ -192,7 +185,6 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
 
       "retrieve empty list of previous bulk calculation requests" in {
         when(mockRepo.findByUserId(Matchers.any())).thenReturn(Future.successful(Option(Nil)))
-        //val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = AnyContentAsEmpty)
         val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = AnyContentAsEmpty)
         val result = TestBulkController.getPreviousRequests("USER_ID").apply(fakeRequest)
         status(result) must be(OK)
@@ -242,7 +234,6 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
       "retrieve a results summary" in {
 
         when(mockRepo.findSummaryByReference(Matchers.any())).thenReturn(Future.successful(Some(BulkResultsSummary("my ref", Some(10), Some(1), "USER_ID"))))
-        //val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = AnyContentAsEmpty)
         val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = AnyContentAsEmpty)
         val result = TestBulkController.getResultsSummary("USER_ID", "thing-ref")(fakeRequest)
         (contentAsJson(result).\("reference")).as[JsString].value must be("my ref")
@@ -252,7 +243,6 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
       "return 404 when not found" in {
 
         when(mockRepo.findSummaryByReference(Matchers.any())).thenReturn(Future.successful(None))
-        //val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = AnyContentAsEmpty)
         val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = AnyContentAsEmpty)
         val result = TestBulkController.getResultsSummary("USER_ID", "thing-ref")(fakeRequest)
         status(result) must be(NOT_FOUND)
@@ -261,7 +251,6 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
 
       "return 403 unauthorized when userid doesn't match" in {
         when(mockRepo.findSummaryByReference(Matchers.any())).thenReturn(Future.successful(Some(BulkResultsSummary("my ref", Some(10), Some(1), "USER_ID"))))
-        //val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = AnyContentAsEmpty)
         val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = AnyContentAsEmpty)
         val result = TestBulkController.getResultsSummary("WRONG_USER_ID", "thing-ref")(fakeRequest)
         status(result) must be(FORBIDDEN)
@@ -326,7 +315,6 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
           Future.successful(Some(ProcessedBulkCalculationRequest("1", "Ref", "email", "ref2",
             List.empty[ProcessReadyCalculationRequest], "USER-ID", LocalDateTime.now, true, 1, 0))))
 
-        //val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = AnyContentAsEmpty)
         val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = AnyContentAsEmpty)
         val result = TestBulkController.getContributionsAndEarningsAsCsv("WRONG_USER_ID", "thing-ref")(fakeRequest)
         status(result) must be(FORBIDDEN)
@@ -336,7 +324,6 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting
       "return 404 when not found" in {
 
         when(mockRepo.findByReference(Matchers.any(), Matchers.any())).thenReturn(Future.successful(None))
-        //val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> Seq("application/json"))), body = AnyContentAsEmpty)
         val fakeRequest = FakeRequest(method = "GET", uri = "", headers = FakeHeaders(Seq("Content-type" -> "application/json")), body = AnyContentAsEmpty)
         val result = TestBulkController.getContributionsAndEarningsAsCsv("USER_ID", "thing-ref")(fakeRequest)
         status(result) must be(NOT_FOUND)

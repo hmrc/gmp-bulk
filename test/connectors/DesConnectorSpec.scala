@@ -35,11 +35,12 @@ import uk.gov.hmrc.http._
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.http.HttpClient
 import utils.WireMockHelper
+import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Future
 
-class DesConnectorSpec extends PlaySpec with OneServerPerSuite with WireMockHelper with BeforeAndAfter with MockitoSugar {
+class DesConnectorSpec extends PlaySpec with GuiceOneServerPerSuite with WireMockHelper with BeforeAndAfter with MockitoSugar {
 
   private val injector = app.injector
   private val mockMetrics = mock[ApplicationMetrics]

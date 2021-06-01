@@ -27,8 +27,9 @@ import org.mockito.Mockito._
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
 import repositories.BulkCalculationMongoRepository
-import uk.gov.hmrc.http.{Upstream4xxResponse, Upstream5xxResponse}
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.test.UnitSpec
+import scala.language.postfixOps
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -93,7 +94,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
 
     "insert a failed response when a 400 code is returned from DES" in {
 
-      val ex = mock[Upstream4xxResponse]
+      val ex = UpstreamErrorResponse("Call to Individual Pension calculation on NPS Service failed with status code 400", 400, 400)
       when(ex.reportAs) thenReturn 400
 
       when(mockDesConnector.calculate(Matchers.any())).thenReturn(Future.failed(ex))
@@ -132,7 +133,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
     }
 
     "insert a failed response when a 500 code is returned from DES" in {
-      val exObj = Upstream5xxResponse("Call to Individual Pension calculation on NPS Service failed with status code 500", 500, 500)
+      val exObj = UpstreamErrorResponse("Call to Individual Pension calculation on NPS Service failed with status code 500", 500, 500)
 
       when(mockDesConnector.getPersonDetails(Matchers.any())) thenReturn Future.successful(DesGetSuccessResponse)
       when(mockDesConnector.calculate(Matchers.any())).thenReturn(Future.failed(exObj))

@@ -24,7 +24,6 @@ import org.scalatest.{BeforeAndAfter, MustMatchers}
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.play.PlaySpec
 import play.api.i18n.{Messages, MessagesImpl}
-import play.api.i18n.Messages.Implicits._
 import play.api.inject.guice.{GuiceApplicationBuilder, GuiceableModule}
 import play.api.libs.json.Json
 import play.api.{Application, Mode}

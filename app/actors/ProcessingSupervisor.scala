@@ -26,11 +26,13 @@ import metrics.ApplicationMetrics
 import play.api.Logger
 import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
 import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
+import com.github.ghik.silencer.silent
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
+@silent
 @Singleton
 class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration,
                                      bulkCalculationMongoRepository : BulkCalculationMongoRepository,
@@ -117,7 +119,7 @@ class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration
     // $COVERAGE-ON$
 
     case STOP => {
-
+      import scala.language.postfixOps
       Logger.debug("[ProcessingSupervisor][received while processing] STOP received")
       lockrepo.releaseLock(lockKeeper.lockId,lockKeeper.serverId)
       context unbecome

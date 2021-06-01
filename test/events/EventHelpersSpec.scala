@@ -17,14 +17,12 @@
 package events
 
 import org.scalatestplus.play.PlaySpec
-import uk.gov.hmrc.http.HeaderCarrier
 
 class EventHelpersSpec extends PlaySpec {
 
   "EventHelpers" must {
     "createMultiEntry should create a string from a list of values and deduplicate" in {
 
-      implicit val hc = new HeaderCarrier()
       val result = EventHelpers.createMultiEntry(List("S2730000B", "S2730000B", "S2730001B", "S2730002B"))
 
       result must be("S2730001B:1;S2730000B:2;S2730002B:1")

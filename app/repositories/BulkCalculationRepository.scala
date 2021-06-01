@@ -32,7 +32,7 @@ import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.collections.GenericCollection
 import reactivemongo.api.commands.MultiBulkWriteResult
 import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.api.{Cursor, DefaultDB, ReadPreference}
+import reactivemongo.api.{Cursor, DefaultDB, ReadPreference, ReadConcern}
 import reactivemongo.bson.{BSONDateTime, BSONDocument, BSONObjectID}
 import reactivemongo.play.iteratees.cursorProducer
 import reactivemongo.play.json.ImplicitBSONHandlers._
@@ -307,8 +307,9 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
             bulkRequest => {
 
               val childrenStartTime = System.currentTimeMillis()
+              val criteria = Json.obj("bulkId" -> bulkRequest._id, "isChild" -> true, "hasResponse" -> false, "hasValidationErrors" -> false, "hasValidRequest" -> true)
 
-              proxyCollection.count(Some(Json.obj("bulkId" -> bulkRequest._id, "isChild" -> true, "hasResponse" -> false, "hasValidationErrors" -> false, "hasValidRequest" -> true))) flatMap {
+              proxyCollection.count(selector = Some(criteria),  limit = None, hint = None, skip = 0, readConcern = ReadConcern.Available) flatMap {
                 case result => result match {
                   case count if count == 0 =>
                     val processedChildren = proxyCollection.find(Json.obj("isChild" -> true, "bulkId" -> bulkRequest._id), Option.empty[JsObject])

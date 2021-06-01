@@ -22,7 +22,7 @@ import play.api.mvc.Results._
 import play.api.mvc._
 import uk.gov.hmrc.auth.core._
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.play.HeaderCarrierConverter
+import uk.gov.hmrc.play.http.HeaderCarrierConverter
 import scala.concurrent.Future
 
 class AuthAction @Inject()(override val authConnector: AuthConnector,
@@ -33,7 +33,7 @@ class AuthAction @Inject()(override val authConnector: AuthConnector,
   val parser: BodyParser[AnyContent] = controllerComponents.parsers.defaultBodyParser
 
   override def invokeBlock[A](request: Request[A], block: Request[A] => Future[Result]): Future[Result] = {
-    implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
+    implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequestAndSession(request, request.session)
 
     authorised(ConfidenceLevel.L50) {
       block(request)

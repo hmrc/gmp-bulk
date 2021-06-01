@@ -26,7 +26,7 @@ import models.{CalculationResponse, GmpBulkCalculationResponse, ProcessReadyCalc
 import play.api.http.Status
 import play.api.Logger
 import repositories.BulkCalculationMongoRepository
-import uk.gov.hmrc.http.{Upstream4xxResponse, Upstream5xxResponse}
+import uk.gov.hmrc.http.UpstreamErrorResponse
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
@@ -81,7 +81,7 @@ class CalculationRequestActor extends Actor with ActorUtils {
                 }
               }.recover {
 
-                case e: Upstream4xxResponse if e.reportAs == Status.BAD_REQUEST => {
+                case e: UpstreamErrorResponse if e.reportAs == Status.BAD_REQUEST => {
 
                   // $COVERAGE-OFF$
                   Logger.error(s"[CalculationRequestActor] Inserting Failure response failed with error: $e")
@@ -108,7 +108,7 @@ class CalculationRequestActor extends Actor with ActorUtils {
 
               f match {
 
-                case Upstream5xxResponse(message, responseCode, _, _) => {
+                case UpstreamErrorResponse(message, responseCode, _, _) if responseCode == 500 => {
                   // $COVERAGE-OFF$
                   Logger.error(s"[CalculationRequestActor] Error : ${message} Exception: $f")
                   // $COVERAGE-ON$

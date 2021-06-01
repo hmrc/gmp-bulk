@@ -18,7 +18,6 @@ package models
 
 import com.kenshoo.play.metrics.PlayModule
 import helpers.RandomNino
-import org.joda.time.LocalDateTime
 import org.scalatest.MustMatchers
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.play.PlaySpec
@@ -298,8 +297,6 @@ class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite with 
   
 
   "handle timestamp conversion" in {
-    val localDateTime = new LocalDateTime(2016,5,18,17,50,55,511)
-
     val bprJson = Json.parse(
       """
             {
@@ -312,7 +309,6 @@ class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite with 
     )
 
     Json.toJson(bprJson.as[BulkPreviousRequest]) must equal(bprJson)
-
   }
 
 }
