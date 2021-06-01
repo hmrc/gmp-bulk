@@ -25,7 +25,7 @@ import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.http.Status.{OK, UNAUTHORIZED}
 import play.api.mvc.{Action, AnyContent}
 import com.google.inject.Inject
-import play.api.mvc.{AbstractController, ControllerComponents}
+import play.api.mvc.{BaseController, ControllerComponents}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.status
 import uk.gov.hmrc.auth.core.{AuthConnector, MissingBearerToken}
@@ -37,8 +37,10 @@ import uk.gov.hmrc.play.bootstrap.tools.Stubs.stubMessagesControllerComponents
 
 class AuthActionSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSugar {
 
-  class Harness(cc: ControllerComponents, authAction: AuthAction) extends AbstractController(cc) {
+  class Harness(authAction: AuthAction) extends BaseController {
     def onPageLoad(): Action[AnyContent] = authAction { request => Ok }
+
+    override def controllerComponents: ControllerComponents = stubMessagesControllerComponents()
   }
 
   implicit val timeout: Timeout = 5 seconds
@@ -48,13 +50,12 @@ class AuthActionSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSugar
       "must return unauthorised" in {
 
         val mockMicroserviceAuthConnector = mock[AuthConnector]
-        val cc = mock[ControllerComponents]
 
         when(mockMicroserviceAuthConnector.authorise(any(),any())(any(), any()))
           .thenReturn(Future.failed(new MissingBearerToken))
 
         val authAction = new AuthAction(mockMicroserviceAuthConnector, stubMessagesControllerComponents())
-        val controller = new Harness(cc, authAction)
+        val controller = new Harness(authAction)
         val result = controller.onPageLoad()(FakeRequest("", ""))
         status(result) mustBe UNAUTHORIZED
 
@@ -64,13 +65,12 @@ class AuthActionSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSugar
     "the user is logged in" must {
       "must return the request" in {
         val mockMicroserviceAuthConnector = mock[AuthConnector]
-        val cc = mock[ControllerComponents]
 
         when(mockMicroserviceAuthConnector.authorise[Unit](any(),any())(any(), any()))
           .thenReturn(Future.successful(()))
 
         val authAction = new AuthAction(mockMicroserviceAuthConnector, stubMessagesControllerComponents())
-        val controller = new Harness(cc, authAction)
+        val controller = new Harness(authAction)
 
         val result = controller.onPageLoad()(FakeRequest("", ""))
         status(result) mustBe OK

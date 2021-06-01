@@ -52,6 +52,8 @@ class DesConnector @Inject()(environment: Environment,
     override def read(method: String, url: String, response: HttpResponse) = response
   }
 
+  private implicit val hc: HeaderCarrier = HeaderCarrier()
+
   val serviceKey = servicesConfig.getConfString("nps.key", "")
   val serviceEnvironment = servicesConfig.getConfString("nps.environment", "")
   lazy val citizenDetailsUrl: String = servicesConfig.baseUrl("citizen-details")
@@ -70,8 +72,8 @@ class DesConnector @Inject()(environment: Environment,
 
     val startTime = System.currentTimeMillis()
 
-    withCircuitBreaker(http.GET[HttpResponse](url, request.queryParams)
-      (hc = npsRequestHeaderCarrier, rds = httpReads, ec = ExecutionContext.global).map { response =>
+    withCircuitBreaker(http.GET[HttpResponse](url, request.queryParams, headers= npsHeaders)
+      (hc = hc, rds = httpReads, ec = ExecutionContext.global).map { response =>
 
       metrics.registerStatusCode(response.status.toString)
       metrics.desConnectionTime(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
@@ -94,17 +96,13 @@ class DesConnector @Inject()(environment: Environment,
           }
         }
       }
-    })(hc=npsRequestHeaderCarrier)
+    })(hc=hc)
   }
 
-  private def npsRequestHeaderCarrier: HeaderCarrier = {
-
-    HeaderCarrier(extraHeaders = Seq(
+  private def npsHeaders =Seq(
       "Gov-Uk-Originator-Id" -> servicesConfig.getConfString("nps.originator-id",""),
       "Authorization" -> s"Bearer $serviceKey",
-      "Environment" -> serviceEnvironment))
-
-  }
+      "Environment" -> serviceEnvironment)
 
   override protected def circuitBreakerConfig: CircuitBreakerConfig = {
     CircuitBreakerConfig("DesConnector",
@@ -126,17 +124,17 @@ class DesConnector @Inject()(environment: Environment,
 
   def getPersonDetails(nino: String): Future[DesGetResponse] = {
 
-    val newHc = HeaderCarrier(extraHeaders = Seq(
+    val desHeaders = Seq(
       "Gov-Uk-Originator-Id" -> servicesConfig.getConfString("des.originator-id",""),
       "Authorization" -> s"Bearer $serviceKey",
-      "Environment" -> serviceEnvironment))
+      "Environment" -> serviceEnvironment)
 
     val startTime = System.currentTimeMillis()
     val url = s"$citizenDetailsUrl/citizen-details/$nino/etag"
 
     logger.debug(s"[getPersonDetails] Contacting DES at $url")
 
-    http.GET[HttpResponse](url)(implicitly[HttpReads[HttpResponse]], newHc, ec = ExecutionContext.global) map { response =>
+    http.GET[HttpResponse](url, headers = desHeaders)(implicitly[HttpReads[HttpResponse]], hc, ec = ExecutionContext.global) map { response =>
       metrics.mciConnectionTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
 
       response.status match {
@@ -157,4 +155,5 @@ class DesConnector @Inject()(environment: Environment,
         DesGetErrorResponse(e)
     }
   }
+
 }

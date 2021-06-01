@@ -130,7 +130,7 @@ class DesConnectorSpec extends PlaySpec with GuiceOneServerPerSuite with WireMoc
 
       "return an error when 400 returned" in new SUT {
         when(mockHttp.GET[HttpResponse](Matchers.any())(Matchers.any(), Matchers.any(), Matchers.any()))
-          .thenReturn(Future.successful(HttpResponse(BAD_REQUEST, None)))
+          .thenReturn(Future.successful(HttpResponse(BAD_REQUEST, "400")))
 
         val url = s"/pensions/individuals/gmp/scon/S/1401234/Q/nino/$nino/surname/SMI/firstname/B/calculation/"
         stubServiceGet(url, BAD_REQUEST, "Bad request", ("request_earnings" -> "1"))
