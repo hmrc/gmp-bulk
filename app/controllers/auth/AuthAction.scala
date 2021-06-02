@@ -33,7 +33,7 @@ class AuthAction @Inject()(override val authConnector: AuthConnector,
   val parser: BodyParser[AnyContent] = controllerComponents.parsers.defaultBodyParser
 
   override def invokeBlock[A](request: Request[A], block: Request[A] => Future[Result]): Future[Result] = {
-    implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequestAndSession(request, request.session)
+    implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
 
     authorised(ConfidenceLevel.L50) {
       block(request)
