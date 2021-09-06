@@ -16,8 +16,8 @@
 
 package actors
 
+import actors.Throttler.SetTarget
 import akka.actor.{ActorSystem, Props}
-import akka.contrib.throttle.Throttler.SetTarget
 import akka.testkit._
 import com.kenshoo.play.metrics.PlayModule
 import config.ApplicationConfiguration

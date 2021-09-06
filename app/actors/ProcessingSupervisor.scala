@@ -16,11 +16,11 @@
 
 package actors
 
+import actors.Throttler.{RateInt, SetTarget}
 import akka.actor._
-import akka.contrib.throttle.Throttler.{SetTarget, _}
-import akka.contrib.throttle.TimerBasedThrottler
 import config.ApplicationConfiguration
 import connectors.DesConnector
+
 import javax.inject.{Inject, Singleton}
 import metrics.ApplicationMetrics
 import play.api.Logging
