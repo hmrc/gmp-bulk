@@ -24,8 +24,8 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.play.PlaySpec
 import play.api.i18n.{Messages, MessagesImpl}
+import play.api.test.Helpers.stubMessagesControllerComponents
 import uk.gov.hmrc.mongo.Awaiting
-import uk.gov.hmrc.play.bootstrap.tools.Stubs.stubMessagesControllerComponents
 
 class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting with MockitoSugar {
 

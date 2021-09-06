@@ -25,19 +25,18 @@ import models._
 import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.scalatestplus.mockito.MockitoSugar
-import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
+import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll, WordSpecLike}
 import repositories.BulkCalculationMongoRepository
 import uk.gov.hmrc.http.UpstreamErrorResponse
-import uk.gov.hmrc.play.test.UnitSpec
-import scala.language.postfixOps
 
+import scala.language.postfixOps
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class CalculationRequestActorMock(val desConnector: DesConnector, val repository: BulkCalculationMongoRepository, val metrics: ApplicationMetrics)
   extends CalculationRequestActor with CalculationRequestActorComponent
 
-class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationActorSystem")) with UnitSpec with MockitoSugar
+class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationActorSystem")) with WordSpecLike with MockitoSugar
   with BeforeAndAfterAll with DefaultTimeout with ImplicitSender with ActorUtils with BeforeAndAfter {
 
   val mockDesConnector = mock[DesConnector]

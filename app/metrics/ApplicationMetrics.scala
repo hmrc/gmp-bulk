@@ -20,18 +20,17 @@ import java.util.concurrent.TimeUnit
 
 import com.google.inject.Inject
 import com.kenshoo.play.metrics.Metrics
-import play.api.Logger
-
+import play.api.Logging
 import scala.concurrent.duration
 import scala.util.Try
 
-class ApplicationMetrics @Inject()(metrics: Metrics) {
+class ApplicationMetrics @Inject()(metrics: Metrics) extends Logging {
   lazy val registry = metrics.defaultRegistry
 
   private val timer = (name: String) => Try{registry.timer(name)}
   private val counter = (name: String) => Try{registry.counter(name)}
 
-  Logger.info("[Metrics][constructor] Preloading metrics keys")
+  logger.info("[Metrics][constructor] Preloading metrics keys")
 
   Seq(
     ("processRequest-timer", timer),
@@ -61,12 +60,12 @@ class ApplicationMetrics @Inject()(metrics: Metrics) {
 
   def metricTimer(diff: Long, unit: duration.TimeUnit, name : String) : Unit = {
     Try{registry.timer(name).update(diff, unit)}
-      .failed.foreach(ex => Logger.warn(s"$name failed : Metrics may be disabled" ))
+      .failed.foreach(ex => logger.warn(s"$name failed : Metrics may be disabled" ))
   }
 
   def metricCounter(name : String) : Unit = {
     Try{registry.counter(name).inc()}
-      .failed.foreach(ex => Logger.warn(s"$name failed : Metrics may be disabled" ))
+      .failed.foreach(ex => logger.warn(s"$name failed : Metrics may be disabled" ))
   }
 
   def processRequest(diff: Long, unit: duration.TimeUnit): Unit = metricTimer(diff, unit, "processRequest-timer")

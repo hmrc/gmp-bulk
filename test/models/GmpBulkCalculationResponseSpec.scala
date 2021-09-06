@@ -26,8 +26,8 @@ import org.scalatestplus.play.PlaySpec
 import play.api.i18n.{Messages, MessagesImpl}
 import play.api.inject.guice.{GuiceApplicationBuilder, GuiceableModule}
 import play.api.libs.json.Json
+import play.api.test.Helpers.stubMessagesControllerComponents
 import play.api.{Application, Mode}
-import uk.gov.hmrc.play.bootstrap.tools.Stubs.stubMessagesControllerComponents
 
 class GmpBulkCalculationResponseSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSugar with MustMatchers with BeforeAndAfter {
 
@@ -92,7 +92,6 @@ class GmpBulkCalculationResponseSpec extends PlaySpec with GuiceOneAppPerSuite w
       gmpResponse.calculationPeriods.head.contsAndEarnings.get.head.contEarnings must be("239.80")
       gmpResponse.calculationPeriods.head.contsAndEarnings.get.tail.head.contEarnings must be("1560")
       gmpResponse.dateOfDeath must be(Some(new LocalDate("2016-01-01")))
-
     }
 
 

@@ -19,7 +19,7 @@ package connectors
 import com.google.inject.Inject
 import org.joda.time.LocalDate
 import play.api.libs.json.Json
-import play.api.{Configuration, Environment, Logger}
+import play.api.{Configuration, Environment, Logging}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.http.HttpClient
@@ -40,7 +40,7 @@ object SendTemplatedEmailRequest {
 class EmailConnector @Inject()(http: HttpClient,
                                environment: Environment,
                                val runModeConfiguration: Configuration,
-                               servicesConfig: ServicesConfig) {
+                               servicesConfig: ServicesConfig) extends Logging {
 
   def sendReceivedTemplatedEmail(template: ReceivedUploadTemplate)(implicit hc: HeaderCarrier): Future[Boolean] = {
 
@@ -62,12 +62,12 @@ class EmailConnector @Inject()(http: HttpClient,
 
     val url = s"${servicesConfig.baseUrl("email")}/hmrc/email"
 
-    Logger.debug(s"[EmailConnector] Sending email to ${request.to.mkString(", ")}")
+    logger.debug(s"[EmailConnector] Sending email to ${request.to.mkString(", ")}")
 
     http.POST(url, request, Seq(("Content-Type", "application/json"))) map { response =>
       response.status match {
-        case 202 => Logger.debug(s"[EmailConnector] Email sent: ${response.body}"); true
-        case _ => Logger.error(s"[EmailConnector] Email not sent: ${response.body}"); false
+        case 202 => logger.debug(s"[EmailConnector] Email sent: ${response.body}"); true
+        case _ => logger.error(s"[EmailConnector] Email not sent: ${response.body}"); false
       }
     }
   }

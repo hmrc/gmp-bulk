@@ -24,7 +24,7 @@ import connectors.{DesConnector, DesGetHiddenRecordResponse}
 import metrics.ApplicationMetrics
 import models.{CalculationResponse, GmpBulkCalculationResponse, ProcessReadyCalculationRequest}
 import play.api.http.Status
-import play.api.Logger
+import play.api.Logging
 import repositories.BulkCalculationMongoRepository
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
@@ -37,7 +37,7 @@ trait CalculationRequestActorComponent {
   val metrics: ApplicationMetrics
 }
 
-class CalculationRequestActor extends Actor with ActorUtils {
+class CalculationRequestActor extends Actor with ActorUtils with Logging {
 
   self: CalculationRequestActorComponent =>
 
@@ -73,7 +73,7 @@ class CalculationRequestActor extends Actor with ActorUtils {
                     result => {
                       // $COVERAGE-OFF$
                       metrics.processRequest(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-                      Logger.debug(s"[CalculationRequestActor] InsertResponse : $result")
+                      logger.debug(s"[CalculationRequestActor] InsertResponse : $result")
                       // $COVERAGE-ON$
                       origSender ! result
                     }
@@ -84,7 +84,7 @@ class CalculationRequestActor extends Actor with ActorUtils {
                 case e: UpstreamErrorResponse if e.reportAs == Status.BAD_REQUEST => {
 
                   // $COVERAGE-OFF$
-                  Logger.error(s"[CalculationRequestActor] Inserting Failure response failed with error: $e")
+                  logger.error(s"[CalculationRequestActor] Inserting Failure response failed with error: $e")
                   // $COVERAGE-ON$
 
                   // Record the response as a failure, which will help out with cyclic processing of messages
@@ -98,7 +98,7 @@ class CalculationRequestActor extends Actor with ActorUtils {
 
                 case e =>
                   // $COVERAGE-OFF$
-                  Logger.error(s"[CalculationRequestActor] Inserting Failure response failed with error :$e")
+                  logger.error(s"[CalculationRequestActor] Inserting Failure response failed with error :$e")
                   origSender ! akka.actor.Status.Failure(e)
                 // $COVERAGE-ON$
               }
@@ -110,7 +110,7 @@ class CalculationRequestActor extends Actor with ActorUtils {
 
                 case UpstreamErrorResponse(message, responseCode, _, _) if responseCode == 500 => {
                   // $COVERAGE-OFF$
-                  Logger.error(s"[CalculationRequestActor] Error : ${message} Exception: $f")
+                  logger.error(s"[CalculationRequestActor] Error : ${message} Exception: $f")
                   // $COVERAGE-ON$
 
                   // Record the response as a failure, which will help out with cyclic processing of messages
@@ -123,7 +123,7 @@ class CalculationRequestActor extends Actor with ActorUtils {
 
                 case _ => {
                   // $COVERAGE-OFF$
-                  Logger.error(s"[CalculationRequestActor] Calling DES failed with error: ${ f.getMessage }")
+                  logger.error(s"[CalculationRequestActor] Calling DES failed with error: ${ f.getMessage }")
                   // $COVERAGE-ON$
                   origSender ! akka.actor.Status.Failure(f)
 
@@ -137,7 +137,7 @@ class CalculationRequestActor extends Actor with ActorUtils {
       } recover {
         case e =>
           // $COVERAGE-OFF$
-          Logger.error(s"[CalculationRequestActor] Calling getPersonDetails failed with error: ${ e.getMessage }")
+          logger.error(s"[CalculationRequestActor] Calling getPersonDetails failed with error: ${ e.getMessage }")
         // $COVERAGE-ON$
       }
 
@@ -146,8 +146,8 @@ class CalculationRequestActor extends Actor with ActorUtils {
 
     case STOP => {
       // $COVERAGE-OFF$
-      Logger.debug(s"[CalculationRequestActor] stop message")
-      Logger.debug("sender: " + sender.getClass)
+      logger.debug(s"[CalculationRequestActor] stop message")
+      logger.debug("sender: " + sender.getClass)
       // $COVERAGE-ON$
       sender ! STOP
     }
@@ -155,8 +155,8 @@ class CalculationRequestActor extends Actor with ActorUtils {
 
     case e => {
       // $COVERAGE-OFF$
-      Logger.debug(s"[CalculationRequestActor] Invalid Message : { message : $e}")
-      Logger.debug("sender: " + sender.getClass)
+      logger.debug(s"[CalculationRequestActor] Invalid Message : { message : $e}")
+      logger.debug("sender: " + sender.getClass)
       // $COVERAGE-ON$
       sender ! akka.actor.Status.Failure(new RuntimeException(s"invalid message: $e"))
     }

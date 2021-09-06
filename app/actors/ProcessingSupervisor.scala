@@ -23,7 +23,7 @@ import config.ApplicationConfiguration
 import connectors.DesConnector
 import javax.inject.{Inject, Singleton}
 import metrics.ApplicationMetrics
-import play.api.Logger
+import play.api.Logging
 import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
 import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
 import com.github.ghik.silencer.silent
@@ -38,7 +38,7 @@ class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration
                                      bulkCalculationMongoRepository : BulkCalculationMongoRepository,
                                      mongoApi : play.modules.reactivemongo.ReactiveMongoComponent,
                                      desConnector : DesConnector,
-                                     metrics : ApplicationMetrics) extends Actor with ActorUtils {
+                                     metrics : ApplicationMetrics) extends Actor with ActorUtils with Logging {
 
   val lockrepo = LockMongoRepository(mongoApi.mongoConnector.db)
 
@@ -74,7 +74,7 @@ class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration
   override def receive: Receive = {
 
     case STOP => {
-      Logger.debug("[ProcessingSupervisor] received while not processing: STOP received")
+      logger.debug("[ProcessingSupervisor] received while not processing: STOP received")
       lockrepo.releaseLock(lockKeeper.lockId,lockKeeper.serverId)
     }
 
@@ -82,11 +82,11 @@ class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration
 
       lockKeeper.tryLock {
         context become receiveWhenProcessRunning
-        Logger.debug("Starting Processing")
+        logger.debug("Starting Processing")
 
         repository.findRequestsToProcess().map {
           case Some(requests) if requests.nonEmpty => {
-            Logger.debug(s"[ProcessingSupervisor][receive] took ${requests.size} request/s")
+            logger.debug(s"[ProcessingSupervisor][receive] took ${requests.size} request/s")
             for (request <- requests.take(applicationConfig.bulkProcessingBatchSize)) {
 
               throttler ! request
@@ -96,7 +96,7 @@ class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration
           }
           case _ => {
 
-            Logger.debug(s"[ProcessingSupervisor][receive] no requests pending")
+            logger.debug(s"[ProcessingSupervisor][receive] no requests pending")
             context unbecome;
             throttler ! STOP
 
@@ -104,9 +104,9 @@ class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration
 
         }
       }.map{
-        case Some(thing) => Logger.debug(s"[ProcessingSupervisor][receive] obtained mongo lock")
+        case Some(thing) => logger.debug(s"[ProcessingSupervisor][receive] obtained mongo lock")
         // $COVERAGE-OFF$
-        case _ => Logger.debug(s"[ProcessingSupervisor][receive] failed to obtain mongo lock")
+        case _ => logger.debug(s"[ProcessingSupervisor][receive] failed to obtain mongo lock")
         // $COVERAGE-ON$
       }
 
@@ -115,12 +115,12 @@ class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration
 
   def receiveWhenProcessRunning : Receive = {
     // $COVERAGE-OFF$
-    case START => Logger.debug("[ProcessingSupervisor][received while processing] START ignored")
+    case START => logger.debug("[ProcessingSupervisor][received while processing] START ignored")
     // $COVERAGE-ON$
 
     case STOP => {
       import scala.language.postfixOps
-      Logger.debug("[ProcessingSupervisor][received while processing] STOP received")
+      logger.debug("[ProcessingSupervisor][received while processing] STOP received")
       lockrepo.releaseLock(lockKeeper.lockId,lockKeeper.serverId)
       context unbecome
     }

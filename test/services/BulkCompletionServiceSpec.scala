@@ -17,21 +17,21 @@
 package services
 
 import java.util.UUID
-
 import helpers.RandomNino
 import models.BulkCalculationRequest
 import org.mockito.Mockito._
-import org.scalatest.BeforeAndAfterEach
+import org.scalatest.Matchers.{be, convertToAnyShouldWrapper}
+import org.scalatest.{BeforeAndAfterEach, WordSpecLike}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.libs.json.Json
+import play.api.test.Helpers.{await, defaultAwaitTimeout}
 import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
 import uk.gov.hmrc.mongo.MongoSpecSupport
-import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
 
-class BulkCompletionServiceSpec extends UnitSpec with MockitoSugar with GuiceOneAppPerSuite with BeforeAndAfterEach with MongoSpecSupport {
+class BulkCompletionServiceSpec extends WordSpecLike with MockitoSugar with GuiceOneAppPerSuite with BeforeAndAfterEach with MongoSpecSupport {
 
   lazy val bulkCalculationRespository =app.injector.instanceOf[BulkCalculationMongoRepository]
   val mongoApi  = app.injector.instanceOf[play.modules.reactivemongo.ReactiveMongoComponent]

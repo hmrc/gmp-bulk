@@ -27,7 +27,7 @@ import uk.gov.hmrc.play.bootstrap.http.{DefaultHttpClient, HttpClient}
 
 class Module(environment: Environment, configuration: Configuration) extends AbstractModule {
 
-  def configure(): Unit = {
+  override def configure(): Unit = {
     bind(classOf[HttpClient]).to(classOf[DefaultHttpClient])
     bind(classOf[AuditConnector]).to(classOf[DefaultAuditConnector])
     bind(classOf[BulkCalculationMongoRepository]).toProvider(classOf[BulkCalculationMongoRepositoryProvider])

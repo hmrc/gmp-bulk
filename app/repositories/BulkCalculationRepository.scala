@@ -27,7 +27,7 @@ import models._
 import org.joda.time.{DateTime, LocalDateTime}
 import play.api.libs.iteratee.{Iteratee, _}
 import play.api.libs.json.{JsObject, Json}
-import play.api.Logger
+import play.api.Logging
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.collections.GenericCollection
 import reactivemongo.api.commands.MultiBulkWriteResult
@@ -121,11 +121,11 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     }
 
     result.map {
-      lastError => Logger.debug(s"[BulkCalculationRepository][insertResponseByReference] bulkResponse: $calculationResponse, result : $lastError ")
+      lastError => logger.debug(s"[BulkCalculationRepository][insertResponseByReference] bulkResponse: $calculationResponse, result : $lastError ")
         lastError.ok
     }.recover {
       // $COVERAGE-OFF$
-      case e => Logger.error("Failed to update request", e)
+      case e => logger.error("Failed to update request", e)
         false
       // $COVERAGE-ON$
     }
@@ -165,12 +165,12 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     tryResult match {
       case Success(s) => {
         s.map { x =>
-          Logger.debug(s"[BulkCalculationRepository][findByReference] uploadReference: $uploadReference, result: $x ")
+          logger.debug(s"[BulkCalculationRepository][findByReference] uploadReference: $uploadReference, result: $x ")
           x
         }
       }
       case Failure(f) => {
-        Logger.error(s"[BulkCalculationRepository][findByReference] uploadReference: $uploadReference, exception: ${f.getMessage}")
+        logger.error(s"[BulkCalculationRepository][findByReference] uploadReference: $uploadReference, exception: ${f.getMessage}")
         Future.successful(None)
       }
     }
@@ -193,12 +193,12 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     tryResult match {
       case Success(s) => {
         s.map { x =>
-          Logger.debug(s"[BulkCalculationRepository][findSummaryByReference] uploadReference : $uploadReference, result: $x")
+          logger.debug(s"[BulkCalculationRepository][findSummaryByReference] uploadReference : $uploadReference, result: $x")
           x.headOption
         }
       }
       case Failure(f) => {
-        Logger.error(s"[BulkCalculationRepository][findSummaryByReference] uploadReference : $uploadReference, exception: ${f.getMessage}")
+        logger.error(s"[BulkCalculationRepository][findSummaryByReference] uploadReference : $uploadReference, exception: ${f.getMessage}")
         Future.successful(None)
       }
     }
@@ -223,12 +223,12 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     tryResult match {
       case Success(s) => {
         s.map { x =>
-          Logger.debug(s"[BulkCalculationRepository][findByUserId] userId : $userId, result: ${x.size}")
+          logger.debug(s"[BulkCalculationRepository][findByUserId] userId : $userId, result: ${x.size}")
           Some(x)
         }
       }
       case Failure(f) => {
-        Logger.error(s"[BulkCalculationRepository][findByUserId] exception: ${f.getMessage}")
+        logger.error(s"[BulkCalculationRepository][findByUserId] exception: ${f.getMessage}")
         Future.successful(None)
       }
     }
@@ -266,7 +266,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
             val sequenced = Future.sequence(x).map {
               thing => Some(thing.flatten)
             }
-            Logger.debug(s"[BulkCalculationRepository][findRequestsToProcess] SUCCESS")
+            logger.debug(s"[BulkCalculationRepository][findRequestsToProcess] SUCCESS")
 
             sequenced onComplete {
               case _ => metrics.findRequestsToProcessTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
@@ -278,7 +278,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
       }
 
       case Failure(f) => {
-        Logger.error(s"[BulkCalculationRepository][findRequestsToProcess] failed: ${f.getMessage}")
+        logger.error(s"[BulkCalculationRepository][findRequestsToProcess] failed: ${f.getMessage}")
         metrics.findRequestsToProcessTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
         Future.successful(None)
       }
@@ -290,7 +290,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
 
     val startTime = System.currentTimeMillis()
 
-    Logger.debug("[BulkCalculationRepository][findAndComplete]: starting ")
+    logger.debug("[BulkCalculationRepository][findAndComplete]: starting ")
     val findResult = Try {
 
       val incompleteBulk = proxyCollection.find(Json.obj("isParent" -> true, "complete" -> false), Option.empty[JsObject]).sort(Json.obj("_id" -> 1))
@@ -334,14 +334,14 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
       }
     }
 
-    Logger.debug(s"[BulkCalculationRepository][findAndComplete]: processing")
+    logger.debug(s"[BulkCalculationRepository][findAndComplete]: processing")
 
     findResult match {
       case Success(s) => {
         val result = s.flatMap { requests =>
           Future.sequence(requests.map { request =>
 
-            Logger.debug(s"Got request $request")
+            logger.debug(s"Got request $request")
 
             val totalRequests = request.get.calculationRequests.size
             val failedRequests = request.get.failedRequestCount
@@ -352,7 +352,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
             val result = proxyCollection.update(ordered = false).one(selector, modifier)
 
             result.map {
-              writeResult => Logger.debug(s"[BulkCalculationRepository][findAndComplete] : { result : $writeResult }")
+              writeResult => logger.debug(s"[BulkCalculationRepository][findAndComplete] : { result : $writeResult }")
                 // $COVERAGE-OFF$
                 if (writeResult.ok) {
                   implicit val hc = HeaderCarrier()
@@ -377,7 +377,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
                     }
                   ))
                   resultsEventResult.failed.foreach({
-                    case e: Throwable => Logger.error(s"[BulkCalculationRepository][findAndComplete] resultsEventResult: ${e.getMessage}", e)
+                    case e: Throwable => logger.error(s"[BulkCalculationRepository][findAndComplete] resultsEventResult: ${e.getMessage}", e)
                   })
 
                   val childSelector = Json.obj("bulkId" -> request.get._id)
@@ -385,7 +385,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
                   val childResult = proxyCollection.update(ordered = false).one(childSelector, childModifier, multi = true)
 
                   childResult.map {
-                    childWriteResult => Logger.debug(s"[BulkCalculationRepository][findAndComplete] childResult: $childWriteResult")
+                    childWriteResult => logger.debug(s"[BulkCalculationRepository][findAndComplete] childResult: $childWriteResult")
                   }
 
                   emailConnector.sendProcessedTemplatedEmail(ProcessedUploadTemplate(
@@ -411,14 +411,14 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
         result
       }
       case Failure(f) => {
-        Logger.error(s"[BulkCalculationRepository][findAndComplete] ${f.getMessage}", f)
+        logger.error(s"[BulkCalculationRepository][findAndComplete] ${f.getMessage}", f)
         metrics.findAndCompleteTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
         Future.successful(false)
         }.recover {
         // $COVERAGE-OFF$
         case e: Exception => {
           metrics.findAndCompleteTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-          Logger.error(s"[BulkCalculationRepository][findAndComplete] ${e.getMessage}", e)
+          logger.error(s"[BulkCalculationRepository][findAndComplete] ${e.getMessage}", e)
           false
         }
         // $COVERAGE-ON$
@@ -428,13 +428,13 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
 
   override def insertBulkDocument(bulkCalculationRequest: BulkCalculationRequest): Future[Boolean] = {
 
-    Logger.info(s"[BulkCalculationRepository][insertBulkDocument][numDocuments]: ${bulkCalculationRequest.calculationRequests.size}")
+    logger.info(s"[BulkCalculationRepository][insertBulkDocument][numDocuments]: ${bulkCalculationRequest.calculationRequests.size}")
 
     val startTime = System.currentTimeMillis()
 
     findDuplicateUploadReference(bulkCalculationRequest.uploadReference).flatMap {
 
-      case true => Logger.debug(s"[BulkCalculationRepository][insertBulkDocument] Duplicate request found (${bulkCalculationRequest.uploadReference})")
+      case true => logger.debug(s"[BulkCalculationRepository][insertBulkDocument] Duplicate request found (${bulkCalculationRequest.uploadReference})")
         Future.successful(false)
       case false => {
 
@@ -483,19 +483,19 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
           case Success(s) => {
             s.map {
               case x: MultiBulkWriteResult if x.writeErrors == Nil =>
-                Logger.debug(s"[BulkCalculationRepository][insertBulkDocument] $x")
+                logger.debug(s"[BulkCalculationRepository][insertBulkDocument] $x")
                 true
             }.recover {
               case e: Throwable =>
                 // $COVERAGE-OFF$
-                Logger.error("Error inserting document", e)
+                logger.error("Error inserting document", e)
                 false
               // $COVERAGE-ON$
             }
           }
 
           case Failure(f) => {
-            Logger.error(s"[BulkCalculationRepository][insertBulkDocument] failed: ${f.getMessage}")
+            logger.error(s"[BulkCalculationRepository][insertBulkDocument] failed: ${f.getMessage}")
             Future.successful(false)
           }
         }
@@ -515,7 +515,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
       case Success(s) =>
         s.map {
           x =>
-            Logger.debug(s"[BulkCalculationRepository][findDuplicateUploadReference] uploadReference : $uploadReference, result: ${
+            logger.debug(s"[BulkCalculationRepository][findDuplicateUploadReference] uploadReference : $uploadReference, result: ${
               x.nonEmpty
             }")
             x.nonEmpty
@@ -523,7 +523,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
 
       // $COVERAGE-OFF$
       case Failure(e) =>
-        Logger.error(s"[BulkCalculationRepository][findDuplicateUploadReference] ${
+        logger.error(s"[BulkCalculationRepository][findDuplicateUploadReference] ${
           e.getMessage
         } ($uploadReference)", e)
         Future.successful(false)

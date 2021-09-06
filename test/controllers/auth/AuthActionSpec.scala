@@ -27,13 +27,12 @@ import play.api.mvc.{Action, AnyContent}
 import com.google.inject.Inject
 import play.api.mvc.{BaseController, ControllerComponents}
 import play.api.test.FakeRequest
-import play.api.test.Helpers.status
+import play.api.test.Helpers.{status, stubMessagesControllerComponents}
 import uk.gov.hmrc.auth.core.{AuthConnector, MissingBearerToken}
 
 import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.concurrent.duration._
-import uk.gov.hmrc.play.bootstrap.tools.Stubs.stubMessagesControllerComponents
 
 class AuthActionSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSugar {
 

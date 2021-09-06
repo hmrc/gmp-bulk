@@ -24,8 +24,8 @@ import org.scalatestplus.play.PlaySpec
 import play.api.i18n.{Messages, MessagesImpl}
 import play.api.inject.guice.{GuiceApplicationBuilder, GuiceableModule}
 import play.api.libs.json.Json
+import play.api.test.Helpers.stubMessagesControllerComponents
 import play.api.{Application, Mode}
-import uk.gov.hmrc.play.bootstrap.tools.Stubs.stubMessagesControllerComponents
 
 class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite with MustMatchers {
   val cc = stubMessagesControllerComponents()

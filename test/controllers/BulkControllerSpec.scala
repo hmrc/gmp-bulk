@@ -34,9 +34,7 @@ import play.api.test.{FakeHeaders, FakeRequest}
 import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.mongo.Awaiting
-
 import scala.concurrent.Future
-import uk.gov.hmrc.play.bootstrap.tools.Stubs.stubMessagesControllerComponents
 
 class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting with MockitoSugar {
 

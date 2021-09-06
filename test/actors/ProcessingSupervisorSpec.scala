@@ -27,20 +27,19 @@ import metrics.ApplicationMetrics
 import models.{ProcessReadyCalculationRequest, ValidCalculationRequest}
 import org.mockito.Matchers._
 import org.mockito.Mockito._
-import org.scalatest.BeforeAndAfterAll
+import org.scalatest.{BeforeAndAfterAll, WordSpecLike}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.inject.guice.{GuiceApplicationBuilder, GuiceableModule}
 import play.api.{Application, Mode}
 import repositories.BulkCalculationMongoRepository
 import uk.gov.hmrc.lock.LockRepository
-import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.concurrent.duration._
 
-class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem")) with UnitSpec with MockitoSugar with GuiceOneAppPerSuite
+class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem")) with WordSpecLike with MockitoSugar with GuiceOneAppPerSuite
   with BeforeAndAfterAll with DefaultTimeout with ImplicitSender with ActorUtils {
 
   def additionalConfiguration: Map[String, String] = Map( "logger.application" -> "ERROR",
@@ -65,7 +64,7 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
 
 
   override def beforeAll = {
-    when(mockLockRepo.lock(anyString, anyString, any())) thenReturn true
+    when(mockLockRepo.lock(anyString, anyString, any())) thenReturn Future.successful(true)
   }
 
   override def afterAll: Unit = {
