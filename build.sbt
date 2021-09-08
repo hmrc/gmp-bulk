@@ -10,9 +10,6 @@ val appName = "gmp-bulk"
 
 
 
-
-
-
 lazy val scoverageSettings = Seq(
   ScoverageKeys.coverageExcludedPackages := "<empty>;app.*;gmp.*;config.*;metrics.*;testOnlyDoNotUseInAppConf.*;views.html.*;uk.gov.hmrc.*;prod.*",
   ScoverageKeys.coverageMinimumStmtTotal := 50,

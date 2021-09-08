@@ -19,7 +19,7 @@ package services
 import java.util.UUID
 import helpers.RandomNino
 import models.BulkCalculationRequest
-import org.mockito.Mockito._
+import org.mockito.Mockito.when
 import org.scalatest.Matchers.{be, convertToAnyShouldWrapper}
 import org.scalatest.{BeforeAndAfterEach, WordSpecLike}
 import org.scalatestplus.mockito.MockitoSugar

@@ -27,16 +27,18 @@ object AppDependencies {
     def apply(): Seq[ModuleID] = new TestDependencies {
       override lazy val test: Seq[ModuleID] = Seq(
 //        "uk.gov.hmrc"             %% "service-integration-test"   % "1.1.0-play-28",
-        "org.scalatestplus.play"  %% "scalatestplus-play"         % "5.0.0",
         "org.pegdown"             %  "pegdown"                    % "1.6.0",
 
-
-        "org.mockito"             %  "mockito-all"                % "1.10.19",
         "uk.gov.hmrc.mongo"     %% "hmrc-mongo-test-play-28"  % "0.52.0",
         "uk.gov.hmrc"           %% "bootstrap-test-play-28"   % "5.9.0",
       "com.typesafe.akka"     %% "akka-testkit"             % PlayVersion.akkaVersion,
-      "com.github.tomakehurst" % "wiremock-jre8-standalone" % "2.30.0",
-      "com.vladsch.flexmark"   % "flexmark-all"             % "0.36.8"
+        "com.typesafe.akka" %% "akka-slf4j"  % PlayVersion.akkaVersion,
+
+
+      "uk.gov.hmrc"             %% "reactivemongo-test"       % "5.0.0-play-28"        % "test",
+      "org.mockito"             %  "mockito-all"              % "1.10.19"               % "test",
+      "org.scalatestplus.play"  %% "scalatestplus-play"       % "5.0.0"                 % "test"
+
 
       )
     }.test
