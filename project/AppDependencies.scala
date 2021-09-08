@@ -1,5 +1,6 @@
 import play.sbt.PlayImport._
 import sbt._
+import play.core.PlayVersion
 
 object AppDependencies {
 
@@ -28,10 +29,15 @@ object AppDependencies {
 //        "uk.gov.hmrc"             %% "service-integration-test"   % "1.1.0-play-28",
         "org.scalatestplus.play"  %% "scalatestplus-play"         % "5.0.0",
         "org.pegdown"             %  "pegdown"                    % "1.6.0",
-        "uk.gov.hmrc"             %% "reactivemongo-test"         % "5.0.0-play-28",
-        "com.typesafe.akka"       %% "akka-testkit"               % "2.6.14",
+
+
         "org.mockito"             %  "mockito-all"                % "1.10.19",
-        "com.github.tomakehurst"  %  "wiremock-jre8"              % "2.26.3"
+        "uk.gov.hmrc.mongo"     %% "hmrc-mongo-test-play-28"  % "0.52.0",
+        "uk.gov.hmrc"           %% "bootstrap-test-play-28"   % "5.9.0",
+      "com.typesafe.akka"     %% "akka-testkit"             % PlayVersion.akkaVersion,
+      "com.github.tomakehurst" % "wiremock-jre8-standalone" % "2.30.0",
+      "com.vladsch.flexmark"   % "flexmark-all"             % "0.36.8"
+
       )
     }.test
   }
