@@ -14,19 +14,23 @@
  * limitations under the License.
  */
 
-package events
+package scheduling
 
-import org.scalatestplus.play.PlaySpec
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.FiniteDuration
 
-class EventHelpersSpec extends PlaySpec {
+trait ScheduledJob {
+  def name: String
+  def execute(implicit ec: ExecutionContext): Future[Result]
+  def isRunning: Future[Boolean]
 
-  "EventHelpers" must {
-    "createMultiEntry should create a string from a list of values and deduplicate" in {
+  case class Result(message: String)
 
-      val result = EventHelpers.createMultiEntry(List("S2730000B", "S2730000B", "S2730001B", "S2730002B"))
+  def configKey: String = name
 
-      result must be("S2730000B:2;S2730001B:1;S2730002B:1")
-    }
-  }
+  def initialDelay: FiniteDuration
 
+  def interval: FiniteDuration
+
+  override def toString() = s"$name after $initialDelay every $interval"
 }

@@ -25,8 +25,7 @@ import play.api.inject.DefaultApplicationLifecycle
 import play.api.{Application, Environment}
 import repositories.BulkCalculationMongoRepository
 import services.BulkCompletionService
-import uk.gov.hmrc.play.scheduling.{ExclusiveScheduledJob, RunningOfScheduledJobs, ScheduledJob}
-
+import scheduling._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
