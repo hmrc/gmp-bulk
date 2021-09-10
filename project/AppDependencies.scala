@@ -15,7 +15,7 @@ object AppDependencies {
     "uk.gov.hmrc"         %% "domain"                     % s"6.2.0-$playVersion",
     "uk.gov.hmrc"         %% "mongo-lock"                 % s"7.0.0-$playVersion",
     "uk.gov.hmrc"         %% "reactive-circuit-breaker"   % "3.5.0",
-    "uk.gov.hmrc"         %% "tax-year"                   % "1.4.0",
+    "uk.gov.hmrc"         %% "tax-year"                   % "1.6.0",
     "com.typesafe.play"   %% "play-json-joda"             % "2.9.2",
     "com.github.ghik"     %  "silencer-lib"               % "1.7.5" % Provided cross CrossVersion.full,
     compilerPlugin("com.github.ghik" % "silencer-plugin"  % "1.7.5" cross CrossVersion.full)
