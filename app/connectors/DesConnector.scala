@@ -92,6 +92,7 @@ class DesConnector @Inject()(environment: Environment,
               throw UpstreamErrorResponse(s"Call to Individual Pension calculation on NPS Service failed with status code ${status}", status, status)
             case TOO_MANY_REQUESTS => throw new BreakerException
             case 499 => throw new BreakerException
+            case INTERNAL_SERVER_ERROR => throw new BreakerException
             case _ => throw UpstreamErrorResponse(s"An error status $errorStatus was encountered", errorStatus, errorStatus)
           }
         }
