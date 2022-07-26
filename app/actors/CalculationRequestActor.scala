@@ -42,13 +42,15 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
   self: CalculationRequestActorComponent =>
 
   override def receive: Receive = {
-    case request: ProcessReadyCalculationRequest => {
 
+    case request: ProcessReadyCalculationRequest => {
+      println(" inside receive")
       val origSender = sender
       val startTime = System.currentTimeMillis()
 
       desConnector.getPersonDetails(request.validCalculationRequest.get.nino) map {
         case DesGetHiddenRecordResponse =>
+          println(" inside case 1")
 
           repository.insertResponseByReference(request.bulkId, request.lineId,
             GmpBulkCalculationResponse(List(), 423, None, None, None, containsErrors = true)).map { result =>
@@ -58,6 +60,7 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
           }
 
         case x => {
+          println("inside case x")
 
           val tryCallingDes = Try {
             desConnector.calculate(request.validCalculationRequest.get)
@@ -66,6 +69,7 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
 
           tryCallingDes match {
             case Success(successfulCall) => {
+              println(" inside succesful call")
               successfulCall.map {
                 case x: CalculationResponse => {
                   repository.insertResponseByReference(request.bulkId, request.lineId, GmpBulkCalculationResponse.createFromCalculationResponse(x)).map {
@@ -73,7 +77,7 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
                     result => {
                       // $COVERAGE-OFF$
                       metrics.processRequest(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-                      logger.debug(s"[CalculationRequestActor] InsertResponse : $result")
+                      logger.info(s"[CalculationRequestActor] InsertResponse : $result")
                       // $COVERAGE-ON$
                       origSender ! result
                     }
@@ -82,7 +86,7 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
               }.recover {
 
                 case e: UpstreamErrorResponse if e.reportAs == Status.BAD_REQUEST => {
-
+                  println(" inside failure call")
                   // $COVERAGE-OFF$
                   logger.error(s"[CalculationRequestActor] Inserting Failure response failed with error: $e")
                   // $COVERAGE-ON$
@@ -105,6 +109,7 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
             }
 
             case Failure(f) => {
+              println("inside failure x")
 
               f match {
 
@@ -122,6 +127,7 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
                 }
 
                 case _ => {
+                  println("inside failure case _")
                   // $COVERAGE-OFF$
                   logger.error(s"[CalculationRequestActor] Calling DES failed with error: ${ f.getMessage }")
                   // $COVERAGE-ON$
@@ -145,9 +151,10 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
     }
 
     case STOP => {
+      println(" inside stop")
       // $COVERAGE-OFF$
-      logger.debug(s"[CalculationRequestActor] stop message")
-      logger.debug("sender: " + sender.getClass)
+      logger.info(s"[CalculationRequestActor] stop message")
+      logger.info("sender: " + sender.getClass)
       // $COVERAGE-ON$
       sender ! STOP
     }
@@ -155,8 +162,8 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
 
     case e => {
       // $COVERAGE-OFF$
-      logger.debug(s"[CalculationRequestActor] Invalid Message : { message : $e}")
-      logger.debug("sender: " + sender.getClass)
+      logger.info(s"[CalculationRequestActor] Invalid Message : { message : $e}")
+      logger.info("sender: " + sender.getClass)
       // $COVERAGE-ON$
       sender ! akka.actor.Status.Failure(new RuntimeException(s"invalid message: $e"))
     }

@@ -19,8 +19,9 @@ package models
 import org.joda.time.LocalDate
 import play.api.i18n.Messages
 import play.api.libs.json.Json
-import play.api.libs.json.JodaWrites._
-import play.api.libs.json.JodaReads._
+import uk.gov.hmrc.mongo.play.json.formats.MongoJodaFormats
+
+
 
 case class ContributionsAndEarnings(taxYear: Int, contEarnings: String)
 
@@ -69,10 +70,11 @@ case class CalculationPeriod(startDate: Option[LocalDate],
 }
 
 object CalculationPeriod {
+  implicit val dateFormat= MongoJodaFormats.localDateFormat
   implicit val formats = Json.format[CalculationPeriod]
 
   def createFromNpsLgmpcalc(npsLgmpcalc: NpsLgmpcalc): CalculationPeriod = {
-    CalculationPeriod(npsLgmpcalc.scheme_mem_start_date.map(new LocalDate(_)), new LocalDate(npsLgmpcalc.scheme_end_date),
+    CalculationPeriod(npsLgmpcalc.scheme_mem_start_date.map(LocalDate.parse(_)), LocalDate.parse(npsLgmpcalc.scheme_end_date),
       f"${npsLgmpcalc.gmp_cod_allrate_tot}%1.2f", f"${npsLgmpcalc.gmp_cod_post_eightyeight_tot}%1.2f", npsLgmpcalc.revaluation_rate, npsLgmpcalc.gmp_error_code,
       Some(npsLgmpcalc.reval_calc_switch_ind),
       npsLgmpcalc.gmp_cod_p90_ts_tot.map(value => f"$value%1.2f"),
@@ -114,7 +116,9 @@ case class GmpBulkCalculationResponse(
 }
 
 object GmpBulkCalculationResponse {
+  implicit val dateFormat= MongoJodaFormats.localDateFormat
   implicit val formats = Json.format[GmpBulkCalculationResponse]
+
 
   def createFromCalculationResponse(calculationResponse: CalculationResponse):
   GmpBulkCalculationResponse = {
