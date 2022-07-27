@@ -44,11 +44,10 @@ val lockId = "bulkcompletion"
       logger.debug("[BulkCompletionService] Got lock")
       repository.findAndComplete()
     }.map {
-      case Some(_) => println(" mongo lock obtained")
+      case Some(_) =>
         logger.debug("[BulkCompletionService][receive] Obtained mongo lock")
       // $COVERAGE-OFF$
-      case _ =>  println("failed to get mongo lock")
-        logger.debug("[BulkCompletionService][receive] Failed to obtain mongo lock")
+      case _ => logger.debug("[BulkCompletionService][receive] Failed to obtain mongo lock")
       // $COVERAGE-ON$
     }
   }

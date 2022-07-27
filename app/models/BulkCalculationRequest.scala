@@ -17,12 +17,11 @@
 package models
 
 
-import org.mongodb.scala.bson.ObjectId
+import org.joda.time.LocalDateTime
 import play.api.i18n.Messages
 import play.api.libs.json._
 import uk.gov.hmrc.mongo.play.json.formats.{MongoFormats, MongoJavatimeFormats}
 
-import java.time.LocalDateTime
 
 
 case class CalculationRequest(bulkId: Option[String],
@@ -31,7 +30,7 @@ case class CalculationRequest(bulkId: Option[String],
                               validationErrors: Option[Map[String, String]],
                               calculationResponse: Option[GmpBulkCalculationResponse]) {
 
-  def hasErrors = ((calculationResponse.isDefined && calculationResponse.get.globalErrorCode > 0)
+  def hasErrors: Boolean = ((calculationResponse.isDefined && calculationResponse.get.globalErrorCode > 0)
     || (calculationResponse.isDefined &&
     calculationResponse.get.calculationPeriods.foldLeft(0) {
       _ + _.errorCode
@@ -40,7 +39,7 @@ case class CalculationRequest(bulkId: Option[String],
 }
 
 object CalculationRequest {
-  implicit val formats = Json.format[CalculationRequest]
+  implicit val formats: OFormat[CalculationRequest] = Json.format[CalculationRequest]
 }
 
 case class BulkCalculationRequest(_id: Option[String],
@@ -55,8 +54,18 @@ case class BulkCalculationRequest(_id: Option[String],
                                   failed: Option[Int])
 
 object BulkCalculationRequest {
-  implicit val formats = Json.format[BulkCalculationRequest]
+  implicit val timestampReads: Reads[LocalDateTime] = Reads[LocalDateTime](js =>
+    js.validate[String].map[LocalDateTime](dtString =>
+      LocalDateTime.parse(dtString)
+    )
+  )
+
+  // $COVERAGE-OFF$
+  implicit val timestampWrites: Writes[LocalDateTime] = new Writes[LocalDateTime] {
+    def writes(localDateTime: LocalDateTime): JsString = JsString(localDateTime.toString)
+  }
   implicit val idFormat = MongoFormats.objectIdFormat
+  implicit val formats = Json.format[BulkCalculationRequest]
 }
 
 case class ProcessReadyCalculationRequest(bulkId: String,
@@ -99,9 +108,9 @@ case class ProcessReadyCalculationRequest(bulkId: String,
 
 object ProcessReadyCalculationRequest {
   // $COVERAGE-OFF$
-  implicit val formats = Json.format[ProcessReadyCalculationRequest]
   implicit val dateFrmat = MongoJavatimeFormats.localDateFormat
   implicit val idFormat = MongoFormats.objectIdFormat
+  implicit val formats = Json.format[ProcessReadyCalculationRequest]
   // $COVERAGE-ON$
 }
 
@@ -122,17 +131,15 @@ case class ProcessedBulkCalculationRequest(_id: String,
 }
 
 object ProcessedBulkCalculationRequest {
-//  implicit val timestampReads = Reads[LocalDateTime](js =>
-//    js.validate[String].map[LocalDateTime](dtString =>
-//      LocalDateTime.parse(dtString)
-//    )
-//  )
-//
-//  implicit val timestampWrites = new Writes[LocalDateTime] {
-//    def writes(localDateTime: LocalDateTime) = JsString(localDateTime.toString)
-//  }
+  implicit val timestampReads = Reads[LocalDateTime](js =>
+    js.validate[String].map[LocalDateTime](dtString =>
+      LocalDateTime.parse(dtString)
+    )
+  )
 
+  implicit val timestampWrites = new Writes[LocalDateTime] {
+    def writes(localDateTime: LocalDateTime) = JsString(localDateTime.toString)
+  }
+  implicit val idFormat = MongoFormats.objectIdFormat
   implicit val formats = Json.format[ProcessedBulkCalculationRequest]
-  implicit val dateFrmat = MongoJavatimeFormats.localDateTimeFormat
-implicit val idFormat = MongoFormats.objectIdFormat
 }

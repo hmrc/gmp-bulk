@@ -91,10 +91,7 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
 
       when(mockRepository.findRequestsToProcess()).thenReturn(Future.successful(Some(List(processReadyCalculationRequest))))
       within(20 seconds) {
-
-        println("sending start")
         processingSupervisor ! START
-        println("sending start again")
         processingSupervisor ! START
 
         throttlerProbe.expectMsgClass(classOf[SetTarget])

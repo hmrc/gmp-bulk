@@ -55,8 +55,6 @@ class BulkController @Inject()(authAction: AuthAction,
 
   def getPreviousRequests(userId: String) = authAction.async {
     _ =>  {
-
-      println(" inside getPreviousRequests")
       repository.findByUserId(userId).map {
         case Some(x) => {
           Ok(Json.toJson(x))
