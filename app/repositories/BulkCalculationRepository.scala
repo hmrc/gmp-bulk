@@ -291,7 +291,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
 
   }
 
-  def findAndComplete1() = {
+  override def findAndComplete() = {
 
     val startTime = System.currentTimeMillis()
     implicit val hc = HeaderCarrier()
@@ -366,142 +366,6 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
 
   }
 
-  def findAndComplete(): Future[Boolean] = {
-
-    val startTime = System.currentTimeMillis()
-
-    logger.debug("[BulkCalculationRepository][findAndComplete]: starting ")
-    val incompleteBulk = processedBulkCalsReqCollection.find(Filters.and(
-      Filters.equal("isParent", true),
-      Filters.equal("complete", false)))
-      .sort(Sorts.ascending("_id"))
-      .collect()
-      .toFuture().map(_.toList)
-    incompleteBulk onComplete {
-      case _ => metrics.findAndCompleteParentTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-    }
-    val findResult: Future[List[Option[ProcessedBulkCalculationRequest]]] = incompleteBulk.flatMap {
-      bulkList =>
-        Future.sequence(bulkList.par.map {
-          bulkRequest => {
-            val childrenStartTime = System.currentTimeMillis()
-            val criteria = Filters.and(
-              Filters.equal("bulkId" , bulkRequest._id),
-              Filters.eq("isChild" , true),
-              Filters.eq("hasResponse" , false),
-              Filters.eq("hasValidationErrors", false),
-              Filters.eq("hasValidRequest" , true))
-
-            processReadyCalsReqCollection.countDocuments(criteria).toFuture().flatMap { result =>
-              if(result == 0) {
-                val processedChildren = processReadyCalsReqCollection.find(Filters.and(
-                  Filters.eq("isChild" , true),
-                  Filters.eq("bulkId" , bulkRequest._id)))
-                  .toFuture().map(_.toList)
-                  .map { allChildren =>
-                    Some(bulkRequest.copy(calculationRequests = allChildren))
-                  }
-                processedChildren onComplete {
-                  case _ => metrics.findAndCompleteChildrenTimer(System.currentTimeMillis() - childrenStartTime, TimeUnit.MILLISECONDS)
-                }
-                processedChildren
-              } else Future.successful(None)
-            }
-          }
-        }.toList
-        ) map { br => br.filter(z => z.isDefined)
-        }
-    }
-
-
-    logger.debug(s"[BulkCalculationRepository][findAndComplete]: processing")
-
-    implicit val dateTimeFormat = MongoJodaFormats.localDateTimeFormat
-    val result: Future[Boolean] = findResult.flatMap { requests =>
-      Future.sequence(requests.map { request =>
-        logger.debug(s"Got request $request")
-
-        val totalRequests: Int = request.get.calculationRequests.size
-        val failedRequests = request.get.failedRequestCount
-
-        val selector = Filters.eq("uploadReference", request.get.uploadReference)
-        val modifier =
-
-          Updates.combine(
-            Updates.set("complete", true),
-            Updates.set("total", totalRequests),
-            Updates.set("failed",failedRequests),
-            Updates.set("createdAt", Codecs.toBson(LocalDateTime.now())),
-            Updates.set("processedDateTime", Codecs.toBson(LocalDateTime.now().toString))
-          )
-        val result: Future[ProcessedBulkCalculationRequest] = processedBulkCalsReqCollection.findOneAndUpdate(selector, modifier).toFuture()
-
-        result.map {
-          writeResult => logger.debug(s"[BulkCalculationRepository][findAndComplete] : { result : $writeResult }")
-            // $COVERAGE-OFF$
-            implicit val hc = HeaderCarrier()
-            val resultsEventResult = auditConnector.sendEvent(new BulkEvent(
-              request.get.userId,
-              totalRequests - failedRequests,
-              request.get.calculationRequests.count(x => x.validationErrors != None),
-              request.get.calculationRequests.count(x => x.hasNPSErrors),
-              totalRequests,
-              request.get.calculationRequests.collect {
-                case x if x.calculationResponse.isDefined => x.calculationResponse.get.errorCodes
-              }.flatten,
-              request.get.calculationRequests.collect {
-                case x if x.validCalculationRequest.isDefined && x.calculationResponse.isDefined => x.validCalculationRequest.get.scon
-              },
-              request.get.calculationRequests.collect {
-                case x if x.validCalculationRequest.isDefined && x.calculationResponse.isDefined && x.validCalculationRequest.get.dualCalc.isDefined && x.validCalculationRequest.get.dualCalc.get == 1 => true
-                case x if x.validCalculationRequest.isDefined && x.calculationResponse.isDefined && x.validCalculationRequest.get.dualCalc.isDefined && x.validCalculationRequest.get.dualCalc.get == 0 => false
-              },
-              request.get.calculationRequests.collect {
-                case x if x.validCalculationRequest.isDefined && x.calculationResponse.isDefined => x.validCalculationRequest.get.calctype.get
-              }
-            ))
-            resultsEventResult.failed.foreach({
-              case e: Throwable => logger.error(s"[BulkCalculationRepository][findAndComplete] resultsEventResult: ${e.getMessage}", e)
-            })
-
-            val childSelector = Filters.eq("bulkId", request.get._id)
-            val childModifier = Updates.set("createdAt", Codecs.toBson(LocalDateTime.now()))
-            val childResult = processedBulkCalsReqCollection
-              .findOneAndUpdate(childSelector, childModifier)
-              .toFuture()
-
-
-            childResult.map {
-              childWriteResult => logger.debug(s"[BulkCalculationRepository][findAndComplete] childResult: $childWriteResult")
-            }
-
-            emailConnector.sendProcessedTemplatedEmail(ProcessedUploadTemplate(
-              request.get.email,
-              request.get.reference,
-              request.get.timestamp.toLocalDate,
-              request.get.userId))
-
-            // $COVERAGE-ON$
-            true
-        }
-      }).map {
-        x => x.foldLeft(true) {
-          _ && _
-        }
-      }
-    }
-    result onComplete {
-      case _ =>
-        metrics.findAndCompleteTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-    }
-    result.map { _ => true
-    }.recover {case e =>
-      metrics.findAndCompleteTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-      logger.error(s"[BulkCalculationRepository][findAndComplete] ${e.getMessage}", e)
-      false
-    }
-    }
-
   private def findIncompleteBulk(): Future[List[ProcessedBulkCalculationRequest]] = processedBulkCalsReqCollection.find(Filters.and(
     Filters.eq("isParent", true),
     Filters.eq("complete", false)))
@@ -527,7 +391,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
   }
 
   private def updateBulkCalculationByUploadRef(request: ProcessedBulkCalculationRequest): Future[ProcessedBulkCalculationRequest] = {
-
+    implicit val dateTimeFormat = MongoJodaFormats.localDateTimeFormat
     val totalRequests: Int = request.calculationRequests.size
     val failedRequests = request.failedRequestCount
     val selector = Filters.eq("uploadReference", request.uploadReference)
@@ -536,15 +400,16 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
         Updates.set("complete", true),
         Updates.set("total", totalRequests),
         Updates.set("failed",failedRequests),
-        Updates.set("createdAt", LocalDateTime.now()),
-        Updates.set("processedDateTime", LocalDateTime.now().toString)
+        Updates.set("createdAt", Codecs.toBson(LocalDateTime.now())),
+        Updates.set("processedDateTime", Codecs.toBson(LocalDateTime.now().toString))
       )
     processedBulkCalsReqCollection.findOneAndUpdate(selector, modifier).toFuture()
   }
 
   private def updateCalculationByBulkId(request: ProcessedBulkCalculationRequest): Future[BulkCalculationRequest] = {
     val childSelector = Filters.eq("bulkId", request._id)
-    val childModifier = Updates.set("createdAt", LocalDateTime.now())
+    implicit val dateTimeFormat = MongoJodaFormats.localDateTimeFormat
+    val childModifier = Updates.set("createdAt", Codecs.toBson(LocalDateTime.now()))
     collection
       .findOneAndUpdate(childSelector, childModifier)
       .toFuture()
