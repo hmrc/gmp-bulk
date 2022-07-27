@@ -27,16 +27,17 @@ import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.libs.json.Json
 import play.api.test.Helpers.{await, defaultAwaitTimeout}
 import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
-import uk.gov.hmrc.mongo.MongoSpecSupport
+import uk.gov.hmrc.mongo.lock.MongoLockRepository
+import uk.gov.hmrc.mongo.test.MongoSupport
 
 import scala.concurrent.Future
 
-class BulkCompletionServiceSpec extends WordSpecLike with MockitoSugar with GuiceOneAppPerSuite with BeforeAndAfterEach with MongoSpecSupport {
+class BulkCompletionServiceSpec extends WordSpecLike with MockitoSugar with GuiceOneAppPerSuite with BeforeAndAfterEach with MongoSupport {
 
-  lazy val bulkCalculationRespository =app.injector.instanceOf[BulkCalculationMongoRepository]
-  val mongoApi  = app.injector.instanceOf[play.modules.reactivemongo.ReactiveMongoComponent]
+  lazy val bulkCalculationRespository: BulkCalculationMongoRepository =app.injector.instanceOf[BulkCalculationMongoRepository]
+  val mongoLockRepository: MongoLockRepository = app.injector.instanceOf[MongoLockRepository]
 
-  object TestBulkCompletionService extends BulkCompletionService(bulkCalculationRespository, mongoApi ) {
+  object TestBulkCompletionService extends BulkCompletionService(bulkCalculationRespository, mongoLockRepository ) {
     override lazy val repository = bulkCalculationRespository
   }
 
@@ -150,7 +151,7 @@ class BulkCompletionServiceSpec extends WordSpecLike with MockitoSugar with Guic
 
     "cant get a lock" in {
       val mockRepository = mock[BulkCalculationRepository]
-      object TestBulkCompletionService extends BulkCompletionService(bulkCalculationRespository, mongoApi) {
+      object TestBulkCompletionService extends BulkCompletionService(bulkCalculationRespository, mongoLockRepository) {
         override lazy val repository = mockRepository
       }
 

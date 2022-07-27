@@ -25,9 +25,9 @@ import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.play.PlaySpec
 import play.api.i18n.{Messages, MessagesImpl}
 import play.api.test.Helpers.stubMessagesControllerComponents
-import uk.gov.hmrc.mongo.Awaiting
 
-class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting with MockitoSugar {
+
+class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSugar {
 
   val cc = stubMessagesControllerComponents()
   implicit val messages = MessagesImpl(cc.langs.availables.head, cc.messagesApi)

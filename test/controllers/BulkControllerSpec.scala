@@ -33,10 +33,10 @@ import play.api.test.Helpers._
 import play.api.test.{FakeHeaders, FakeRequest}
 import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
 import uk.gov.hmrc.auth.core.AuthConnector
-import uk.gov.hmrc.mongo.Awaiting
+
 import scala.concurrent.Future
 
-class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with Awaiting with MockitoSugar {
+class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSugar {
 
   val cc = stubMessagesControllerComponents()
   implicit val messages = MessagesImpl(cc.langs.availables.head, cc.messagesApi)
