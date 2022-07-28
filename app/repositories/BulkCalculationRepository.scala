@@ -104,7 +104,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
               Updates.set("isChild", true),
               Updates.set("hasResponse", hasResponse),
               Updates.set("hasValidRequest", hasValidRequest),
-              Updates.set("hasValidationErrors", hasValidationErrors),
+              Updates.set("hasValidationErrors", hasValidationErrors)
             )
           )
       }
