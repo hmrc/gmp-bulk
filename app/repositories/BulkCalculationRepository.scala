@@ -24,9 +24,9 @@ import events.BulkEvent
 import metrics.ApplicationMetrics
 import models._
 import org.joda.time.LocalDateTime
+import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.{BsonDocument, ObjectId}
-import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes, Projections, Sorts, Updates}
-import org.mongodb.scala.result.InsertManyResult
+import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes, Sorts, Updates}
 import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.json.{Codecs, CollectionFactory, PlayMongoRepository}
@@ -34,7 +34,6 @@ import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.formats.MongoJodaFormats
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 
-import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -75,10 +74,10 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     ) with BulkCalculationRepository with Logging {
 
   override val auditConnector: AuditConnector = ac
-  val bulkCalcReqCollection = CollectionFactory.collection(mongo.database, collectionName, BulkCalculationRequest.formats)
-  val processedBulkCalsReqCollection = CollectionFactory.collection(mongo.database, collectionName, ProcessedBulkCalculationRequest.formats)
-  val processReadyCalsReqCollection = CollectionFactory.collection(mongo.database, collectionName, ProcessReadyCalculationRequest.formats)
-  val bulkPreviousReqCollection = CollectionFactory.collection(mongo.database, collectionName, BulkPreviousRequest.formats)
+  val bulkCalcReqCollection: MongoCollection[BulkCalculationRequest] = CollectionFactory.collection(mongo.database, collectionName, BulkCalculationRequest.formats)
+  val processedBulkCalsReqCollection: MongoCollection[ProcessedBulkCalculationRequest] = CollectionFactory.collection(mongo.database, collectionName, ProcessedBulkCalculationRequest.formats)
+  val processReadyCalsReqCollection: MongoCollection[ProcessReadyCalculationRequest] = CollectionFactory.collection(mongo.database, collectionName, ProcessReadyCalculationRequest.formats)
+  val bulkPreviousReqCollection: MongoCollection[BulkPreviousRequest] = CollectionFactory.collection(mongo.database, collectionName, BulkPreviousRequest.formats)
 
 
   // $COVERAGE-OFF$
@@ -86,7 +85,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
 
     val childrenEnumerator: Future[Seq[BsonDocument]] =
       mongo.database.getCollection[BsonDocument](collectionName = collectionName).find(Filters.and(
-        Filters.exists("bulkId", true),
+        Filters.exists(fieldName = "bulkId", exists = true),
         Filters.exists("isChild", false)
       ))
         .toFuture()
@@ -117,54 +116,57 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
 
   override def insertResponseByReference(bulkId: String, lineId: Int, calculationResponse: GmpBulkCalculationResponse): Future[Boolean] = {
     val startTime = System.currentTimeMillis()
+    updateResponse(bulkId, lineId, calculationResponse).map {
+      lastError => logTimer(startTime)
+        logger.debug(s"[BulkCalculationRepository][insertResponseByReference] bulkResponse: $calculationResponse, result : $lastError ")
+        true
+    } recover {
+      // $COVERAGE-OFF$
+      case e => logger.info("Failed to update request", e)
+        logTimer(startTime)
+        false
+      // $COVERAGE-ON$
+    }
+  }
+
+  private def updateResponse(bulkId: String, lineId: Int, calculationResponse: GmpBulkCalculationResponse ) = {
     val selector = Filters.and(
       Filters.equal("bulkId", bulkId),
       Filters.equal("lineId", lineId))
     val modifier = Updates.combine(
       Updates.set("calculationResponse", Codecs.toBson(calculationResponse)),
       Updates.set("hasResponse", true))
-    val result = processReadyCalsReqCollection.findOneAndUpdate(selector, modifier).toFuture()
+    processReadyCalsReqCollection.findOneAndUpdate(selector, modifier).toFuture()
 
-    result onComplete {
-      case _ => metrics.insertResponseByReferenceTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-    }
-
-    result.map {
-      lastError => logger.debug(s"[BulkCalculationRepository][insertResponseByReference] bulkResponse: $calculationResponse, result : $lastError ")
-        true
-    }.recover {
-      // $COVERAGE-OFF$
-      case e => logger.info("Failed to update request", e)
-        false
-      // $COVERAGE-ON$
-    }
   }
 
   override def findByReference(uploadReference: String, csvFilter: CsvFilter = CsvFilter.All): Future[Option[ProcessedBulkCalculationRequest]] = {
-
     val startTime = System.currentTimeMillis()
-
-    val request: Future[Option[ProcessedBulkCalculationRequest]] = processedBulkCalsReqCollection.find(Filters.equal("uploadReference", uploadReference)).headOption()
-    val result: Future[Option[ProcessedBulkCalculationRequest]] = request.flatMap {
-      case Some(br) => {
-        val query = createQuery(csvFilter, br)
-        processReadyCalsReqCollection.find(query)
-          .sort(Sorts.ascending("lineId"))
-          .collect()
-          .toFuture()
-          .map { calcRequests =>
-            logger.debug(s"[BulkCalculationRepository][findByReference] uploadReference: $uploadReference, result: $br ")
-            Some(br.copy(calculationRequests = calcRequests.toList))
-          }
-      }
-      case _ => logger.debug(s"[BulkCalculationRepository][findByReference] uploadReference: $uploadReference, result: No ProcessedBulkCalculationRequest found  ")
+      findByUploadRef(uploadReference).flatMap {
+      case Some(br) => logTimer(startTime)
+        findByCsvFilterAndRequest(br, csvFilter)
+      case _ => logTimer(startTime)
+        logger.debug(s"[BulkCalculationRepository][findByReference] uploadReference: $uploadReference, result: No ProcessedBulkCalculationRequest found  ")
         Future.successful(None)
     }
+  }
 
-    result onComplete {
-      case _ => metrics.findByReferenceTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-    }
-    result
+  private def findByUploadRef(uploadReference: String) = {
+    processedBulkCalsReqCollection
+      .find(Filters.equal("uploadReference", uploadReference))
+      .headOption()
+  }
+
+  private def findByCsvFilterAndRequest(br: ProcessedBulkCalculationRequest, csvFilter: CsvFilter ) = {
+    val query = createQuery(csvFilter, br)
+    processReadyCalsReqCollection.find(query)
+      .sort(Sorts.ascending("lineId"))
+      .collect()
+      .toFuture()
+      .map { calcRequests =>
+        logger.debug(s"[BulkCalculationRepository][findByCsvFilterAndRequest], request: $br ")
+        Some(br.copy(calculationRequests = calcRequests.toList))
+      }
   }
 
 
@@ -178,9 +180,9 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     )
       Filters.or( Filters.equal("bulkId", br._id))
     case CsvFilter.Successful => Filters.and(
-      Filters.equal("bulkId", br._id),
-      Filters.exists("validationErrors", false),
-      Filters.equal("calculationResponse.containsErrors", false)
+      Filters.equal(fieldName = "bulkId", value = br._id),
+      Filters.exists(fieldName = "validationErrors", exists = false),
+      Filters.equal(fieldName = "calculationResponse.containsErrors", value = false)
     )
     case _ => Filters.equal("bulkId", br._id)
   }
@@ -202,14 +204,13 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
             res.userId)
         }
       }
-    result onComplete {
-      case _ => metrics.findSummaryByReferenceTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-    }
 
     result.map { brs =>
+      logTimer(startTime)
       logger.debug(s"[BulkCalculationRepository][findSummaryByReference] uploadReference : $uploadReference, result: $brs")
       brs.headOption
     }.recover { case e =>
+      logTimer(startTime)
       logger.error(s"[BulkCalculationRepository][findSummaryByReference] uploadReference : $uploadReference, exception: ${e.getMessage}")
       None
     }
@@ -225,19 +226,17 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
       .find(Filters.and(
         Filters.eq("userId", userId),
         Filters.eq("complete", true)))
-      //.projection(Projections.include("uploadReference","reference","timestamp","processedDateTime"))
       .collect()
       .toFuture().map(_.toList)
 
-    result onComplete {
-      case _ => metrics.findByUserIdTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-    }
 
     result.map { bulkRequest =>
+      logTimer(startTime)
       logger.debug(s"[BulkCalculationRepository][findByUserId] userId : $userId, result: ${bulkRequest.size}")
       Some(bulkRequest)
     }.recover {
-      case e => logger.error(s"[BulkCalculationRepository][findByUserId] exception: ${e.getMessage}")
+      case e => logTimer(startTime)
+        logger.error(s"[BulkCalculationRepository][findByUserId] exception: ${e.getMessage}")
         None
     }
     }
@@ -246,28 +245,12 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
 
     val startTime = System.currentTimeMillis()
 
-    val incompleteBulk: Future[List[ProcessedBulkCalculationRequest]] = processedBulkCalsReqCollection.find(Filters.and(
-      Filters.equal("isParent", true),
-      Filters.equal("complete", false)))
-      .sort(Sorts.ascending("_id"))
-      .collect()
-      .toFuture().map(_.toList)
 
-    val result: Future[List[Future[List[ProcessReadyCalculationRequest]]]] = incompleteBulk.map {
+    val result: Future[List[Future[List[ProcessReadyCalculationRequest]]]] = findIncompleteBulk().map {
       bulkList =>
         bulkList.map {
           bulkRequest => {
-            processReadyCalsReqCollection.find[ProcessReadyCalculationRequest](
-              Filters.and(
-                Filters.equal("isChild", true),
-                Filters.equal("hasValidationErrors", false),
-                Filters.equal("bulkId", bulkRequest._id),
-                Filters.equal("hasValidRequest", true),
-                Filters.equal("hasResponse", false)
-              )
-            ).limit(applicationConfiguration.bulkProcessingBatchSize)
-              .collect()
-              .toFuture().map(_.toList)
+            findProcessReadyCalReq(bulkRequest)
           }
         }
     }
@@ -275,21 +258,34 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     result.flatMap {x =>
       val sequenced = Future.sequence(x).map {
         thing => Some(thing.flatten)
+      }.map { res =>
+        logTimer(startTime)
+        res
       }
       logger.debug(s"[BulkCalculationRepository][findRequestsToProcess] SUCCESS")
-
-      sequenced onComplete {
-        case _ => metrics.findRequestsToProcessTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-      }
       sequenced
     }
       .recover {
         case e => logger.error(s"[BulkCalculationRepository][findRequestsToProcess] failed: ${e.getMessage}")
-          metrics.findRequestsToProcessTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
+          logTimer(startTime)
           None
       }
 
   }
+
+  private def findProcessReadyCalReq(bulkRequest: ProcessedBulkCalculationRequest) = processReadyCalsReqCollection.find(
+    Filters.and(
+      Filters.equal("isChild", true),
+      Filters.equal("hasValidationErrors", false),
+      Filters.equal("bulkId", bulkRequest._id),
+      Filters.equal("hasValidRequest", true),
+      Filters.equal("hasResponse", false)
+    )
+  ).limit(applicationConfiguration.bulkProcessingBatchSize)
+    .collect()
+    .toFuture().map(_.toList)
+
+
 
   override def findAndComplete() = {
 
@@ -298,7 +294,6 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     logger.debug("[BulkCalculationRepository][findAndComplete]: starting ")
     val result: Future[Boolean] = for {
       processedBulkCalReqList <- getProcessedBulkCalRequestList(startTime)
-
       booleanList <-  Future.sequence(processedBulkCalReqList.map { request =>
         val req: ProcessedBulkCalculationRequest = request.getOrElse(sys.error("Processed Bulk calculation Request missing"))
         logger.debug(s"Got request $request")
@@ -310,8 +305,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     result.map{ res =>
       logTimer(startTime)
       res
-    }
-      .recover {
+    }.recover {
         case e =>
           logger.error(s"[BulkCalculationRepository][findAndComplete] ${e.getMessage}", e)
           logTimer(startTime)
@@ -427,68 +421,72 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     val startTime = System.currentTimeMillis()
 
     findDuplicateUploadReference(bulkCalculationRequest.uploadReference).flatMap {
-
-      case true => logger.debug(s"[BulkCalculationRepository][insertBulkDocument] Duplicate request found (${bulkCalculationRequest.uploadReference})")
+      case true =>
+        logger.debug(s"[BulkCalculationRepository][insertBulkDocument] Duplicate request found (${bulkCalculationRequest.uploadReference})")
         Future.successful(false)
-      case false => {
-
-        val strippedBulk = ProcessedBulkCalculationRequest(new ObjectId().toString,
-          bulkCalculationRequest.uploadReference,
-          bulkCalculationRequest.email,
-          bulkCalculationRequest.reference,
-          List(),
-          bulkCalculationRequest.userId,
-          bulkCalculationRequest.timestamp,
-          complete = bulkCalculationRequest.complete.getOrElse(false),
-          bulkCalculationRequest.total.getOrElse(0),
-          bulkCalculationRequest.failed.getOrElse(0),
-          isParent = true)
-
-        val calculationRequests = bulkCalculationRequest.calculationRequests.map {
-          request => request.copy(bulkId = Some(strippedBulk._id))
-        }
-
-        val bulkDocs: immutable.Seq[ProcessReadyCalculationRequest] = calculationRequests map { c => ProcessReadyCalculationRequest(
-          c.bulkId.get,
-          c.lineId,
-          c.validCalculationRequest,
-          c.validationErrors,
-          calculationResponse = c.calculationResponse,
-          isChild = true,
-          hasResponse = c.calculationResponse.isDefined,
-          hasValidRequest = c.validCalculationRequest.isDefined,
-          hasValidationErrors = c.hasErrors)
-        }
-
-        val insertResult: Future[Option[InsertManyResult]] = processedBulkCalsReqCollection
-          .insertOne(strippedBulk)
-          .flatMap(_ =>
-            processReadyCalsReqCollection.insertMany(bulkDocs))
-          .headOption()
-
-
-        insertResult onComplete {
-          case _ => metrics.insertBulkDocumentTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-        }
-        insertResult.map { insertManyResultOpt =>
-          insertManyResultOpt.fold(false) { insertManyResult =>
-            if (insertManyResult.wasAcknowledged()) {
-              logger.debug(s"[BulkCalculationRepository][insertBulkDocument] $insertManyResult")
-              true
-            } else {
-              logger.error("Error inserting document")
-              false
+      case false =>
+        insertProcessedBulkCal(bulkCalculationRequest)
+          .map { insertManyResultOpt =>
+            insertManyResultOpt.fold(false) { insertManyResult =>
+              logTimer(startTime)
+              if (insertManyResult.wasAcknowledged()) {
+                logger.debug(s"[BulkCalculationRepository][insertBulkDocument] $insertManyResult")
+                true
+              } else {
+                logger.error("Error inserting document")
+                false
+              }
             }
-          }
-        }.recover {
-          case e =>logger.error(s"[BulkCalculationRepository][insertBulkDocument] failed: ${e.getMessage}")
+          }.recover {
+          case e => logTimer(startTime)
+            logger.error(s"[BulkCalculationRepository][insertBulkDocument] failed: ${e.getMessage}")
             false
         }
-
-      }
     }
 
+  }
+
+  private def createStrippedBulk(bulkCalculationRequest: BulkCalculationRequest) = ProcessedBulkCalculationRequest(new ObjectId().toString,
+    bulkCalculationRequest.uploadReference,
+    bulkCalculationRequest.email,
+    bulkCalculationRequest.reference,
+    List(),
+    bulkCalculationRequest.userId,
+    bulkCalculationRequest.timestamp,
+    complete = bulkCalculationRequest.complete.getOrElse(false),
+    bulkCalculationRequest.total.getOrElse(0),
+    bulkCalculationRequest.failed.getOrElse(0),
+    isParent = true)
+
+  private def createBulkDocs(bulkCalculationRequest: BulkCalculationRequest, id: String) = {
+    val calculationRequests = bulkCalculationRequest.calculationRequests.map {
+      request => request.copy(bulkId = Some(id))
     }
+
+    calculationRequests map { c => ProcessReadyCalculationRequest(
+      c.bulkId.get,
+      c.lineId,
+      c.validCalculationRequest,
+      c.validationErrors,
+      calculationResponse = c.calculationResponse,
+      isChild = true,
+      hasResponse = c.calculationResponse.isDefined,
+      hasValidRequest = c.validCalculationRequest.isDefined,
+      hasValidationErrors = c.hasErrors)
+    }
+  }
+
+  private def insertProcessedBulkCal(bulkCalculationRequest: BulkCalculationRequest)= {
+    val strippedBulk = createStrippedBulk(bulkCalculationRequest)
+    val bulkDocs = createBulkDocs(bulkCalculationRequest, strippedBulk._id)
+    processedBulkCalsReqCollection
+      .insertOne(strippedBulk)
+      .flatMap(_ =>
+        processReadyCalsReqCollection.insertMany(bulkDocs))
+      .headOption()
+  }
+
+
 
 
   private def findDuplicateUploadReference(uploadReference: String): Future[Boolean] = {
