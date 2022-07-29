@@ -108,7 +108,7 @@ case class ProcessReadyCalculationRequest(bulkId: String,
 
 object ProcessReadyCalculationRequest {
   // $COVERAGE-OFF$
-  implicit val dateFrmat = MongoJavatimeFormats.localDateFormat
+  implicit val dateFormat = MongoJavatimeFormats.localDateFormat
   implicit val idFormat = MongoFormats.objectIdFormat
   implicit val formats = Json.format[ProcessReadyCalculationRequest]
   // $COVERAGE-ON$
