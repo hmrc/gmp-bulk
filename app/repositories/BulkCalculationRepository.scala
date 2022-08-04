@@ -70,7 +70,8 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
         IndexModel(Indexes.ascending("isParent","complete"), IndexOptions().name("isParentAndComplete")),
         IndexModel(Indexes.ascending("isChild", "hasValidRequest", "hasResponse", "hasValidationErrors"), IndexOptions().name("childQuery")),
         IndexModel(Indexes.ascending("isChild", "bulkId"), IndexOptions().name("childBulkIndex"))
-      )
+      ),
+    replaceIndexes = true
     ) with BulkCalculationRepository with Logging {
 
   override val auditConnector: AuditConnector = ac
