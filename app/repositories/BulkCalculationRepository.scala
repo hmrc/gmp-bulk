@@ -18,6 +18,7 @@ package repositories
 
 import java.util.concurrent.TimeUnit
 import com.google.inject.{Inject, Provider, Singleton}
+import com.mongodb.client.model.UpdateOptions
 import config.ApplicationConfiguration
 import connectors.{EmailConnector, ProcessedUploadTemplate}
 import events.BulkEvent
@@ -26,7 +27,8 @@ import models._
 import org.joda.time.LocalDateTime
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.{BsonDocument, ObjectId}
-import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes, Sorts, Updates}
+import org.mongodb.scala.model.{Filters, FindOneAndUpdateOptions, IndexModel, IndexOptions, Indexes, Sorts, Updates}
+import org.mongodb.scala.result.UpdateResult
 import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.json.{Codecs, CollectionFactory, PlayMongoRepository}
@@ -105,7 +107,8 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
               Updates.set("hasResponse", hasResponse),
               Updates.set("hasValidRequest", hasValidRequest),
               Updates.set("hasValidationErrors", hasValidationErrors)
-            )
+            ),
+            options = FindOneAndUpdateOptions().upsert(true)
           )
       }
     }
@@ -122,7 +125,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
         true
     } recover {
       // $COVERAGE-OFF$
-      case e => logger.info("Failed to update request", e)
+      case e => logger.info(s"Failed to insertResponseByReference:: ${e.getMessage}", e)
         logTimer(startTime)
         false
       // $COVERAGE-ON$
@@ -166,7 +169,10 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
       .map { calcRequests =>
         logger.debug(s"[BulkCalculationRepository][findByCsvFilterAndRequest], request: $br ")
         Some(br.copy(calculationRequests = calcRequests.toList))
-      }
+      }.recover { case e =>
+      logger.error(s"[BulkCalculationRepository][findByCsvFilterAndRequest] error: ${e.getMessage}")
+      None
+    }
   }
 
 
@@ -178,7 +184,6 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
         Filters.equal("calculationResponse.containsErrors", true)
       )
     )
-      Filters.or( Filters.equal("bulkId", br._id))
     case CsvFilter.Successful => Filters.and(
       Filters.equal(fieldName = "bulkId", value = br._id),
       Filters.exists(fieldName = "validationErrors", exists = false),
@@ -367,6 +372,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     .collect()
     .toFuture().map(_.toList)
 
+
   private def countChildDocWithValidRequest(bulkRequestId: String): Future[Long] = {
     val criteria = Filters.and(
       Filters.equal("bulkId" , bulkRequestId),
@@ -398,19 +404,23 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
         Updates.set("processedDateTime", Codecs.toBson(LocalDateTime.now().toString))
       )
     processedBulkCalsReqCollection.findOneAndUpdate(selector, modifier).toFuture()
+      .recover{
+        case e => sys.error(s"[BulkCalculationRepository][updateBulkCalculationByUploadRef] exception: ${e.getMessage}")
+      }
   }
 
-  private def updateCalculationByBulkId(request: ProcessedBulkCalculationRequest): Future[BulkCalculationRequest] = {
+  private def updateCalculationByBulkId(request: ProcessedBulkCalculationRequest): Future[UpdateResult] = {
     val childSelector = Filters.eq("bulkId", request._id)
     implicit val dateTimeFormat = MongoJodaFormats.localDateTimeFormat
     val childModifier = Updates.set("createdAt", Codecs.toBson(LocalDateTime.now()))
-    collection
-      .findOneAndUpdate(childSelector, childModifier)
+    processedBulkCalsReqCollection
+      .updateMany(childSelector, childModifier)
       .toFuture()
       .map { result =>
-        logger.debug(s"[BulkCalculationRepository][findAndComplete] childResult: $result")
-        result
-      }
+       result
+      }.recover {
+      case e => sys.error(s"[BulkCalculationRepository][updateCalculationByBulkId] ${e.getMessage}")
+    }
   }
 
 
