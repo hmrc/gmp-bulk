@@ -36,6 +36,8 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
 class EmailConnectorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSugar with Matchers with BeforeAndAfter {
 
+  import scala.concurrent.ExecutionContext.Implicits.global
+
   lazy val mockHttp = mock[HttpClient]
   val environment = app.injector.instanceOf[Environment]
   lazy val servicesConfig = app.injector.instanceOf[ServicesConfig]

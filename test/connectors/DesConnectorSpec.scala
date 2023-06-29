@@ -17,7 +17,6 @@
 package connectors
 
 import java.util.UUID
-
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.stubbing.StubMapping
 import config.ApplicationConfiguration
@@ -41,6 +40,8 @@ import scala.jdk.CollectionConverters._
 import scala.concurrent.Future
 
 class DesConnectorSpec extends PlaySpec with GuiceOneServerPerSuite with WireMockHelper with BeforeAndAfter with MockitoSugar {
+
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   private val injector = app.injector
   private val mockMetrics = mock[ApplicationMetrics]

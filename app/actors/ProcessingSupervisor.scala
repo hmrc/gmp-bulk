@@ -27,7 +27,7 @@ import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
 import uk.gov.hmrc.mongo.lock.{LockRepository, MongoLockRepository, TimePeriodLockService}
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 @silent
@@ -36,7 +36,7 @@ class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration
                                      bulkCalculationMongoRepository : BulkCalculationMongoRepository,
                                      val mongoLockRepository: MongoLockRepository,
                                      desConnector : DesConnector,
-                                     metrics : ApplicationMetrics)
+                                     metrics : ApplicationMetrics)(implicit ec: ExecutionContext)
   extends Actor with ActorUtils with TimePeriodLockService with Logging {
 
   override val lockRepository: LockRepository = mongoLockRepository

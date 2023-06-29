@@ -31,9 +31,11 @@ import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
 import uk.gov.hmrc.mongo.lock.MongoLockRepository
 import uk.gov.hmrc.mongo.test.MongoSupport
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class BulkCompletionServiceSpec extends AnyWordSpecLike with MockitoSugar with GuiceOneAppPerSuite with BeforeAndAfterEach with MongoSupport {
+
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   lazy val bulkCalculationRespository: BulkCalculationMongoRepository =app.injector.instanceOf[BulkCalculationMongoRepository]
   val mongoLockRepository: MongoLockRepository = app.injector.instanceOf[MongoLockRepository]

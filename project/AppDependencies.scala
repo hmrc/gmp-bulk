@@ -21,7 +21,7 @@ object AppDependencies {
   )
 
   val test: Seq[ModuleID] = Seq(
-    "uk.gov.hmrc"             %% s"bootstrap-test-$playVersion"   % "7.8.0"             % "test",
+    "uk.gov.hmrc"             %% s"bootstrap-test-$playVersion"   % "7.19.0"             % "test",
     "com.typesafe.akka"       %% "akka-testkit"                   % akkaVersion         % "test",
     "com.github.tomakehurst"  %  "wiremock-jre8"                  % "2.31.0"            % "test",
     "uk.gov.hmrc.mongo"       %% s"hmrc-mongo-test-$playVersion"  % mongoVersion        % "test",

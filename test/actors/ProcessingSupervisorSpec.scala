@@ -30,7 +30,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.scalatestplus.mockito.MockitoSugar
 import repositories.BulkCalculationMongoRepository
-import uk.gov.hmrc.mongo.lock.{MongoLockRepository, TimePeriodLockService}
+import uk.gov.hmrc.mongo.lock.MongoLockRepository
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
