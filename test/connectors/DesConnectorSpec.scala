@@ -37,7 +37,7 @@ import uk.gov.hmrc.http.HttpClient
 import utils.WireMockHelper
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.Future
 
 class DesConnectorSpec extends PlaySpec with GuiceOneServerPerSuite with WireMockHelper with BeforeAndAfter with MockitoSugar {

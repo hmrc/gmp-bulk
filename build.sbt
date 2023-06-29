@@ -42,12 +42,11 @@ lazy val microservice = Project(appName, file("."))
     resolvers += Resolver.typesafeRepo("releases"),
     resolvers += "hmrc-releases" at "https://artefacts.tax.service.gov.uk/artifactory/hmrc-releases/"
   )
-  .settings(scalaVersion := "2.12.14")
+  .settings(scalaVersion := "2.13.8")
   .settings(
     scalacOptions ++= List(
       "-Yrangepos",
       "-Xlint:-missing-interpolator,_",
-      "-Yno-adapted-args",
       "-feature",
       "-unchecked",
       "-language:implicitConversions",

@@ -20,7 +20,7 @@ object EventHelpers {
 
   def createMultiEntry(values: List[Any]):String = {
 
-    val groupedValues = values.groupBy(identity).mapValues(_.size).map {
+    val groupedValues = values.groupBy(identity).view.mapValues(_.size).map {
       case (k, v) => k + ":" + v
     }
 

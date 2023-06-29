@@ -25,7 +25,7 @@ class EventHelpersSpec extends PlaySpec {
 
       val result = EventHelpers.createMultiEntry(List("S2730000B", "S2730000B", "S2730001B", "S2730002B"))
 
-      result must be("S2730000B:2;S2730001B:1;S2730002B:1")
+      result must be("S2730002B:1;S2730001B:1;S2730000B:2")
     }
   }
 
