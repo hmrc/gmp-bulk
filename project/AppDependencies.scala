@@ -13,7 +13,7 @@ object AppDependencies {
     "uk.gov.hmrc.mongo"                          %% "hmrc-mongo-play-28"         % mongoVersion,
     "uk.gov.hmrc"                                %% "bootstrap-backend-play-28"  % "7.8.0",
     "uk.gov.hmrc"                                %% "domain"                     % s"8.1.0-$playVersion",
-    "uk.gov.hmrc"                                %% "reactive-circuit-breaker"   % "3.5.0",
+    "uk.gov.hmrc"                                %% "reactive-circuit-breaker"   % "4.1.0",
     "uk.gov.hmrc"                                %% "tax-year"                   % "3.0.0",
     "com.typesafe.play"                          %% "play-json-joda"             % "2.9.3",
     "com.github.ghik"                            %  "silencer-lib"               % "1.7.11" % Provided cross CrossVersion.full,
