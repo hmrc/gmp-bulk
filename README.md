@@ -7,6 +7,12 @@ Guaranteed Minimum Pension Bulk micro service
 
 ##API
 
+### Dependency Upgrades
+
+use command dependencyUpdates in SBT to give a list of all potential dependency upgrades.
+
+addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.5.0")
+
 | PATH | Supported Methods | Description |
 |------|-------------------|-------------|
 | ```/gmp/bulk-data``` | POST | Post a bulk calculation |

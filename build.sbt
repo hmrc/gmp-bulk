@@ -38,7 +38,6 @@ lazy val microservice = Project(appName, file("."))
     retrieveManaged := true,
     PlayKeys.playDefaultPort := 9955,
     routesGenerator := InjectedRoutesGenerator,
-    resolvers += Resolver.bintrayRepo("hmrc", "releases"),
     resolvers += Resolver.typesafeRepo("releases"),
     resolvers += "hmrc-releases" at "https://artefacts.tax.service.gov.uk/artifactory/hmrc-releases/"
   )
