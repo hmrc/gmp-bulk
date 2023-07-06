@@ -5,7 +5,7 @@ import play.core.PlayVersion
 object AppDependencies {
 
   val playVersion = "play-28"
-  val akkaVersion = "2.8.3"
+  val akkaVersion = "2.6.19"
   val mongoVersion = "0.74.0"
 
   val compile: Seq[ModuleID] = Seq(
