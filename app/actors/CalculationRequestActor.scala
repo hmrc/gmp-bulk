@@ -19,21 +19,24 @@ package actors
 import java.util.concurrent.TimeUnit
 import akka.actor._
 import com.google.inject.Inject
-import connectors.{DesConnector, DesGetHiddenRecordResponse}
+import connectors.{DesConnector, DesGetHiddenRecordResponse, IFConnector, IFGetHiddenRecordResponse}
 import metrics.ApplicationMetrics
 import models.{CalculationResponse, GmpBulkCalculationResponse, ProcessReadyCalculationRequest}
 import play.api.http.Status
 import play.api.Logging
 import repositories.BulkCalculationMongoRepository
 import uk.gov.hmrc.http.UpstreamErrorResponse
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
 
 trait CalculationRequestActorComponent {
   val desConnector: DesConnector
+  val ifConnector: IFConnector
   val repository: BulkCalculationMongoRepository
   val metrics: ApplicationMetrics
+  val servicesConfig: ServicesConfig
 }
 
 class CalculationRequestActor extends Actor with ActorUtils with Logging {
@@ -46,8 +49,11 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
       val origSender = sender
       val startTime = System.currentTimeMillis()
 
-      desConnector.getPersonDetails(request.validCalculationRequest.get.nino) map {
-        case DesGetHiddenRecordResponse =>
+      val ifSwitch: Boolean = servicesConfig.getBoolean("ifs.enabled")
+
+      if(ifSwitch){
+        ifConnector.getPersonDetails(request.validCalculationRequest.get.nino) map {
+        case IFGetHiddenRecordResponse =>
 
           repository.insertResponseByReference(request.bulkId, request.lineId,
             GmpBulkCalculationResponse(List(), 423, None, None, None, containsErrors = true)).map { result =>
@@ -58,80 +64,171 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
 
         case x => {
 
-          val tryCallingDes = Try {
-            desConnector.calculate(request.validCalculationRequest.get)
+            val tryCallingDes = Try {
+              ifConnector.calculate(request.validCalculationRequest.get)
+            }
 
-          }
+            tryCallingDes match {
+              case Success(successfulCall) => {
+                successfulCall.map {
+                  case x: CalculationResponse => {
+                    repository.insertResponseByReference(request.bulkId, request.lineId, GmpBulkCalculationResponse.createFromCalculationResponse(x)).map {
 
-          tryCallingDes match {
-            case Success(successfulCall) => {
-              successfulCall.map {
-                case x: CalculationResponse => {
-                  repository.insertResponseByReference(request.bulkId, request.lineId, GmpBulkCalculationResponse.createFromCalculationResponse(x)).map {
-
-                    result => {
-                      // $COVERAGE-OFF$
-                      metrics.processRequest(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-                      logger.debug(s"[CalculationRequestActor] InsertResponse : $result")
-                      // $COVERAGE-ON$
-                      origSender ! result
+                      result => {
+                        // $COVERAGE-OFF$
+                        metrics.processRequest(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
+                        logger.debug(s"[CalculationRequestActor] InsertResponse : $result")
+                        // $COVERAGE-ON$
+                        origSender ! result
+                      }
                     }
                   }
-                }
-              }.recover {
+                }.recover {
 
-                case e: UpstreamErrorResponse if e.reportAs == Status.BAD_REQUEST => {
+                  case e: UpstreamErrorResponse if e.reportAs == Status.BAD_REQUEST => {
 
-                  // $COVERAGE-OFF$
-                  logger.error(s"[CalculationRequestActor] Inserting Failure response failed with error: $e")
-                  // $COVERAGE-ON$
+                    // $COVERAGE-OFF$
+                    logger.error(s"[CalculationRequestActor] Inserting Failure response failed with error: $e")
+                    // $COVERAGE-ON$
 
-                  // Record the response as a failure, which will help out with cyclic processing of messages
-                  repository.insertResponseByReference(request.bulkId, request.lineId,
-                    GmpBulkCalculationResponse(List(), 400, None, None, None, containsErrors = true)).map { result =>
+                    // Record the response as a failure, which will help out with cyclic processing of messages
+                    repository.insertResponseByReference(request.bulkId, request.lineId,
+                      GmpBulkCalculationResponse(List(), 400, None, None, None, containsErrors = true)).map { result =>
 
-                    origSender ! result
+                      origSender ! result
 
+                    }
                   }
-                }
 
-                case e =>
-                  // $COVERAGE-OFF$
-                  logger.error(s"[CalculationRequestActor] Inserting Failure response failed with error :$e")
-                  origSender ! akka.actor.Status.Failure(e)
-                // $COVERAGE-ON$
-              }
-            }
-
-            case Failure(f) => {
-
-              f match {
-
-                case UpstreamErrorResponse(message, responseCode, _, _) if responseCode == 500 => {
-                  // $COVERAGE-OFF$
-                  logger.error(s"[CalculationRequestActor] Error : ${message} Exception: $f")
+                  case e =>
+                    // $COVERAGE-OFF$
+                    logger.error(s"[CalculationRequestActor] Inserting Failure response failed with error :$e")
+                    origSender ! akka.actor.Status.Failure(e)
                   // $COVERAGE-ON$
+                }
+              }
 
-                  // Record the response as a failure, which will help out with cyclic processing of messages
-                  repository.insertResponseByReference(request.bulkId, request.lineId,
-                    GmpBulkCalculationResponse(List(), responseCode, None, None, None, containsErrors = true)).map { result =>
+              case Failure(f) => {
 
+                f match {
+
+                  case UpstreamErrorResponse(message, responseCode, _, _) if responseCode == 500 => {
+                    // $COVERAGE-OFF$
+                    logger.error(s"[CalculationRequestActor] Error : ${message} Exception: $f")
+                    // $COVERAGE-ON$
+
+                    // Record the response as a failure, which will help out with cyclic processing of messages
+                    repository.insertResponseByReference(request.bulkId, request.lineId,
+                      GmpBulkCalculationResponse(List(), responseCode, None, None, None, containsErrors = true)).map { result =>
+
+                      origSender ! akka.actor.Status.Failure(f)
+                    }
+                  }
+
+                  case _ => {
+                    // $COVERAGE-OFF$
+                    logger.error(s"[CalculationRequestActor] Calling DES failed with error: ${ f.getMessage }")
+                    // $COVERAGE-ON$
                     origSender ! akka.actor.Status.Failure(f)
+
                   }
                 }
-
-                case _ => {
-                  // $COVERAGE-OFF$
-                  logger.error(s"[CalculationRequestActor] Calling DES failed with error: ${ f.getMessage }")
-                  // $COVERAGE-ON$
-                  origSender ! akka.actor.Status.Failure(f)
-
-                }
               }
+
+            }
+          }
+        }
+      } recover {
+        case e =>
+          // $COVERAGE-OFF$
+          logger.error(s"[CalculationRequestActor] Calling getPersonDetails failed with error: ${ e.getMessage }")
+        // $COVERAGE-ON$
+      }else{
+        desConnector.getPersonDetails(request.validCalculationRequest.get.nino) map {
+          case DesGetHiddenRecordResponse =>
+
+            repository.insertResponseByReference(request.bulkId, request.lineId,
+              GmpBulkCalculationResponse(List(), 423, None, None, None, containsErrors = true)).map { result =>
+
+              origSender ! result
+
             }
 
-          }
+          case x => {
 
+            val tryCallingDes = Try {
+              desConnector.calculate(request.validCalculationRequest.get)
+            }
+
+            tryCallingDes match {
+              case Success(successfulCall) => {
+                successfulCall.map {
+                  case x: CalculationResponse => {
+                    repository.insertResponseByReference(request.bulkId, request.lineId, GmpBulkCalculationResponse.createFromCalculationResponse(x)).map {
+
+                      result => {
+                        // $COVERAGE-OFF$
+                        metrics.processRequest(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
+                        logger.debug(s"[CalculationRequestActor] InsertResponse : $result")
+                        // $COVERAGE-ON$
+                        origSender ! result
+                      }
+                    }
+                  }
+                }.recover {
+
+                  case e: UpstreamErrorResponse if e.reportAs == Status.BAD_REQUEST => {
+
+                    // $COVERAGE-OFF$
+                    logger.error(s"[CalculationRequestActor] Inserting Failure response failed with error: $e")
+                    // $COVERAGE-ON$
+
+                    // Record the response as a failure, which will help out with cyclic processing of messages
+                    repository.insertResponseByReference(request.bulkId, request.lineId,
+                      GmpBulkCalculationResponse(List(), 400, None, None, None, containsErrors = true)).map { result =>
+
+                      origSender ! result
+
+                    }
+                  }
+
+                  case e =>
+                    // $COVERAGE-OFF$
+                    logger.error(s"[CalculationRequestActor] Inserting Failure response failed with error :$e")
+                    origSender ! akka.actor.Status.Failure(e)
+                  // $COVERAGE-ON$
+                }
+              }
+
+              case Failure(f) => {
+
+                f match {
+
+                  case UpstreamErrorResponse(message, responseCode, _, _) if responseCode == 500 => {
+                    // $COVERAGE-OFF$
+                    logger.error(s"[CalculationRequestActor] Error : ${message} Exception: $f")
+                    // $COVERAGE-ON$
+
+                    // Record the response as a failure, which will help out with cyclic processing of messages
+                    repository.insertResponseByReference(request.bulkId, request.lineId,
+                      GmpBulkCalculationResponse(List(), responseCode, None, None, None, containsErrors = true)).map { result =>
+
+                      origSender ! akka.actor.Status.Failure(f)
+                    }
+                  }
+
+                  case _ => {
+                    // $COVERAGE-OFF$
+                    logger.error(s"[CalculationRequestActor] Calling DES failed with error: ${ f.getMessage }")
+                    // $COVERAGE-ON$
+                    origSender ! akka.actor.Status.Failure(f)
+
+                  }
+                }
+              }
+
+            }
+          }
         }
       } recover {
         case e =>
@@ -139,8 +236,6 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
           logger.error(s"[CalculationRequestActor] Calling getPersonDetails failed with error: ${ e.getMessage }")
         // $COVERAGE-ON$
       }
-
-
     }
 
     case STOP => {
@@ -166,5 +261,9 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
 
 class DefaultCalculationRequestActor @Inject()(override val repository : BulkCalculationMongoRepository,
                                                override val desConnector : DesConnector,
-                                               override val metrics : ApplicationMetrics
-                                              )extends CalculationRequestActor with CalculationRequestActorComponent
+                                               override val metrics : ApplicationMetrics,
+                                               override val ifConnector: IFConnector,
+                                               override val servicesConfig: ServicesConfig
+  )extends CalculationRequestActor with CalculationRequestActorComponent {
+
+}

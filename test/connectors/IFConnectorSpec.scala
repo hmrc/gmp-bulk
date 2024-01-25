@@ -174,7 +174,7 @@ class IFConnectorSpec extends PlaySpec with GuiceOneServerPerSuite with WireMock
 
       val errorCodes5xx = List(BAD_GATEWAY, SERVICE_UNAVAILABLE, GATEWAY_TIMEOUT, INTERNAL_SERVER_ERROR)
       for (errorCode <- errorCodes5xx) {
-        s"return a UpstreamErrorResponse exception when $errorCode returned from DES" in new SUT {
+        s"return a UpstreamErrorResponse exception when $errorCode returned from IF" in new SUT {
           val request = ValidCalculationRequest("S1401234Q", RandomNino.generate, "Smith", "Bill", None, None, None, None, None, None)
 
           val url = s"""/pensions/individuals/gmp/scon/S/1401234/Q/nino/${request.nino.toUpperCase}/surname/SMI/firstname/B/calculation/"""
@@ -191,17 +191,17 @@ class IFConnectorSpec extends PlaySpec with GuiceOneServerPerSuite with WireMock
     "Calling getPersonDetails" should {
 
       val getPersonDetailTestScenarios = List(
-        (OK, citizenDetailsJson, DesGetSuccessResponse),
-        (LOCKED, citizenDetailsJson, DesGetHiddenRecordResponse),
-        (NOT_FOUND, "", DesGetNotFoundResponse),
-        (INTERNAL_SERVER_ERROR, "", DesGetUnexpectedResponse),
-        (SERVICE_UNAVAILABLE, "", DesGetUnexpectedResponse),
-        (TOO_MANY_REQUESTS, "", DesGetUnexpectedResponse),
-        (NGINX_CLIENT_CLOSED_REQUEST, "", DesGetUnexpectedResponse)
+        (OK, citizenDetailsJson, IFGetSuccessResponse),
+        (LOCKED, citizenDetailsJson, IFGetHiddenRecordResponse),
+        (NOT_FOUND, "", IFGetNotFoundResponse),
+        (INTERNAL_SERVER_ERROR, "", IFGetUnexpectedResponse),
+        (SERVICE_UNAVAILABLE, "", IFGetUnexpectedResponse),
+        (TOO_MANY_REQUESTS, "", IFGetUnexpectedResponse),
+        (NGINX_CLIENT_CLOSED_REQUEST, "", IFGetUnexpectedResponse)
       )
 
       for ((status, body, expected) <- getPersonDetailTestScenarios) {
-        s"return a ${expected.getClass.toString} when status from DES is $status" in new SUT {
+        s"return a ${expected.getClass.toString} when status from IF is $status" in new SUT {
           val url = s"/citizen-details/$nino/etag"
           stubServiceGet(url, status, body)
 
@@ -209,7 +209,7 @@ class IFConnectorSpec extends PlaySpec with GuiceOneServerPerSuite with WireMock
         }
       }
 
-      s"hit metrics mciLockResult when status from DES is 423" in new SUT {
+      s"hit metrics mciLockResult when status from IF is 423" in new SUT {
         val url = s"/citizen-details/$nino/etag"
         stubServiceGet(url, LOCKED, citizenDetailsJson)
 
@@ -217,20 +217,11 @@ class IFConnectorSpec extends PlaySpec with GuiceOneServerPerSuite with WireMock
         Mockito.verify(mockMetrics).mciLockResult()
       }
 
-      "return a DesErrorResponse if any other issues" ignore new SUT(mockHttp) {
-        val ex = new Exception("Exception")
-        when(mockHttp.GET[HttpResponse](Matchers.any())(Matchers.any(), Matchers.any(), Matchers.any())) thenReturn {
-          Future.failed(ex)
-        }
-
-        await(getPersonDetails(nino)) must be(DesGetErrorResponse(ex))
-      }
-
       "return a success response if the MCI flag does not appear in the response" in new SUT {
         val url = s"/citizen-details/$nino/etag"
         stubServiceGet(url, OK, "{}")
 
-        await(getPersonDetails(nino)) must be(DesGetSuccessResponse)
+        await(getPersonDetails(nino)) must be(IFGetSuccessResponse)
       }
     }
   }
