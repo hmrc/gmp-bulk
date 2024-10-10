@@ -21,10 +21,10 @@ import com.google.inject.Inject
 import java.time.LocalDate
 import play.api.libs.json.{Json, OFormat}
 import play.api.{Configuration, Logging}
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
-import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
+import uk.gov.hmrc.http.client.HttpClientV2
 
 import java.time.format.DateTimeFormatter
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -40,7 +40,7 @@ object SendTemplatedEmailRequest {
   implicit val format: OFormat[SendTemplatedEmailRequest] = Json.format[SendTemplatedEmailRequest]
 }
 
-class EmailConnector @Inject()(http: HttpClient,
+class EmailConnector @Inject()(http: HttpClientV2,
                                val runModeConfiguration: Configuration,
                                servicesConfig: ServicesConfig) extends Logging {
 
@@ -70,11 +70,15 @@ class EmailConnector @Inject()(http: HttpClient,
 
     logger.debug(s"[EmailConnector] Sending email to ${request.to.mkString(", ")}")
 
-    http.POST(url, request, Seq(("Content-Type", "application/json"))) map { response =>
-      response.status match {
-        case 202 => logger.debug(s"[EmailConnector] Email sent: ${response.body}"); true
-        case _ => logger.error(s"[EmailConnector] Email not sent: ${response.body}"); false
+    http.post(url"$url")
+      .setHeader(Seq(("Content-Type", "application/json")):_*)
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .map { response =>
+        response.status match {
+          case 202 => logger.debug(s"[EmailConnector] Email sent: ${response.body}"); true
+          case _ => logger.error(s"[EmailConnector] Email not sent: ${response.body}"); false
+        }
       }
-    }
   }
 }

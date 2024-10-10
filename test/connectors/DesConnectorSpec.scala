@@ -23,29 +23,25 @@ import config.ApplicationConfiguration
 import helpers.RandomNino
 import metrics.ApplicationMetrics
 import models.ValidCalculationRequest
-import org.mockito.Mockito._
 import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalatest._
-import org.scalatestplus.mockito.MockitoSugar
-import org.scalatestplus.play._
 import play.api.test.Helpers._
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
-import uk.gov.hmrc.http.HttpClient
 import utils.WireMockHelper
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
-
+import uk.gov.hmrc.http.client.HttpClientV2
 import scala.jdk.CollectionConverters._
 import scala.concurrent.Future
 
-class DesConnectorSpec extends PlaySpec with GuiceOneServerPerSuite with WireMockHelper with BeforeAndAfter with MockitoSugar {
+class DesConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite with WireMockHelper with BeforeAndAfter {
 
   private val injector = app.injector
   private val mockMetrics = mock[ApplicationMetrics]
-  private val http = injector.instanceOf[HttpClient]
+  private val http = injector.instanceOf[HttpClientV2]
   private val servicesConfig = injector.instanceOf[ServicesConfig]
   private val applicationConfig = injector.instanceOf[ApplicationConfiguration]
-  private val mockHttp = mock[HttpClient]
+ // private val mockHttp = mock[HttpClientV2]
   private val NGINX_CLIENT_CLOSED_REQUEST = 499
 
   override def beforeEach(): Unit = {
@@ -64,7 +60,7 @@ class DesConnectorSpec extends PlaySpec with GuiceOneServerPerSuite with WireMoc
     )
   }
 
-  class SUT(httpC:HttpClient = http) extends DesConnector(app.configuration, httpC, mockMetrics, servicesConfig, applicationConfig) {
+  class SUT(httpC:HttpClientV2 = http) extends DesConnector(app.configuration, httpC, mockMetrics, servicesConfig, applicationConfig) {
     override lazy val serviceURL: String = "http://localhost:" + server.port()
     override lazy val citizenDetailsUrl: String = serviceURL
   }
@@ -126,8 +122,7 @@ class DesConnectorSpec extends PlaySpec with GuiceOneServerPerSuite with WireMoc
       }
 
       "return an error when 400 returned" in new SUT {
-        when(mockHttp.GET[HttpResponse](ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-          .thenReturn(Future.successful(HttpResponse(BAD_REQUEST, "400")))
+        requestBuilderExecute[HttpResponse](Future.successful(HttpResponse(BAD_REQUEST, "400")))
 
         val url = s"/pensions/individuals/gmp/scon/S/1401234/Q/nino/$nino/surname/SMI/firstname/B/calculation/"
         stubServiceGet(url, BAD_REQUEST, "Bad request", ("request_earnings" -> "1"))
@@ -214,7 +209,7 @@ class DesConnectorSpec extends PlaySpec with GuiceOneServerPerSuite with WireMoc
 
       "return a DesErrorResponse if any other issues" ignore new SUT(mockHttp) {
         val ex = new Exception("Exception")
-        when(mockHttp.GET[HttpResponse](ArgumentMatchers.any())(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())) thenReturn {
+        requestBuilderExecute[HttpResponse] {
           Future.failed(ex)
         }
 

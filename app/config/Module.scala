@@ -19,13 +19,13 @@ package config
 import com.google.inject.AbstractModule
 import play.api.{Configuration, Environment}
 import repositories.{BulkCalculationMongoRepository, BulkCalculationMongoRepositoryProvider}
-import uk.gov.hmrc.play.bootstrap.http.DefaultHttpClient
-import uk.gov.hmrc.http.HttpClient
+import uk.gov.hmrc.play.bootstrap.http.HttpClientV2Provider
+import uk.gov.hmrc.http.client.HttpClientV2
 
 class Module(environment: Environment, configuration: Configuration) extends AbstractModule {
 
   override def configure(): Unit = {
-    bind(classOf[HttpClient]).to(classOf[DefaultHttpClient])
+    bind(classOf[HttpClientV2]).toProvider(classOf[HttpClientV2Provider])
     bind(classOf[BulkCalculationMongoRepository]).toProvider(classOf[BulkCalculationMongoRepositoryProvider])
     bind(classOf[Scheduler]).asEagerSingleton()
   }

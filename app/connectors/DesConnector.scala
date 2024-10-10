@@ -26,22 +26,27 @@ import play.api.{Configuration, Logger}
 import uk.gov.hmrc.circuitbreaker.{CircuitBreakerConfig, UsingCircuitBreaker}
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
-import uk.gov.hmrc.http.HttpClient
+import uk.gov.hmrc.http.client.HttpClientV2
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 sealed trait DesGetResponse
+
 sealed trait DesPostResponse
 
 case object DesGetSuccessResponse extends DesGetResponse
+
 case object DesGetHiddenRecordResponse extends DesGetResponse
+
 case object DesGetNotFoundResponse extends DesGetResponse
+
 case object DesGetUnexpectedResponse extends DesGetResponse
+
 case class DesGetErrorResponse(e: Exception) extends DesGetResponse
 
 class DesConnector @Inject()(val runModeConfiguration: Configuration,
-                             http: HttpClient,
+                             http: HttpClientV2,
                              val metrics: ApplicationMetrics,
                              servicesConfig: ServicesConfig,
                              applicationConfig: ApplicationConfiguration) extends UsingCircuitBreaker {
@@ -67,16 +72,18 @@ class DesConnector @Inject()(val runModeConfiguration: Configuration,
   class BreakerException extends Exception
 
   def calculate(request: ValidCalculationRequest): Future[CalculationResponse] = {
-    val url = calcURI + request.desUri
+    val queryParams = request.queryParams
+    val queryString = queryParams.map { case (key, value) => s"$key=$value" }.mkString("&")
+    val url = s"$calcURI${request.desUri}?$queryString"
     logger.info(s"[calculate] contacting DES at $url")
 
     val startTime = System.currentTimeMillis()
-
-    withCircuitBreaker(http.GET[HttpResponse](url, request.queryParams, headers= npsHeaders)
-      (hc = hc, rds = httpReads, ec = ExecutionContext.global).map { response =>
-
-      metrics.registerStatusCode(response.status.toString)
-      metrics.desConnectionTime(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
+    withCircuitBreaker(http.get(url"$url")
+      .setHeader(npsHeaders:_*)
+      .execute[HttpResponse]
+      .map { response =>
+        metrics.registerStatusCode(response.status.toString)
+        metrics.desConnectionTime(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
 
       response.status match {
         case OK | UNPROCESSABLE_ENTITY =>
@@ -96,7 +103,7 @@ class DesConnector @Inject()(val runModeConfiguration: Configuration,
           }
         }
       }
-    })(hc=hc)
+    })
   }
 
   private def npsHeaders =Seq(
@@ -135,10 +142,13 @@ class DesConnector @Inject()(val runModeConfiguration: Configuration,
 
     logger.debug(s"[getPersonDetails] Contacting DES at $url")
 
-    http.GET[HttpResponse](url, headers = desHeaders)(implicitly[HttpReads[HttpResponse]], hc, ec = ExecutionContext.global) map { response =>
-      metrics.mciConnectionTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
+    http.get(url"$url")
+      .setHeader(desHeaders:_*)
+      .execute[HttpResponse]
+      .map { response =>
+        metrics.mciConnectionTimer(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
 
-      response.status match {
+        response.status match {
           case LOCKED =>
             metrics.mciLockResult()
             DesGetHiddenRecordResponse
