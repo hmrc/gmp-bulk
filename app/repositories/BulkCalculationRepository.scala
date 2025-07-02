@@ -304,7 +304,9 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     logger.debug("[BulkCalculationRepository][findAndComplete]: starting ")
     val result: Future[Boolean] = for {
       processedBulkCalReqList <- getProcessedBulkCalRequestList(startTime)
+      _ = logger.info(s"Retrieved ${processedBulkCalReqList.size} processed requests")
       booleanList <-  Future.sequence(processedBulkCalReqList.map { request =>
+        logger.info(s"Processing request: $request")
         val req: ProcessedBulkCalculationRequest = request.getOrElse(sys.error("Processed Bulk calculation Request missing"))
         logger.debug(s"Got request $request")
         updateRequestAndSendEmailAndEvent(req)
@@ -329,6 +331,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
       updatedRequest <- updateBulkCalculationByUploadRef(req)
       _ <- updateCalculationByBulkId(req)
     } yield {
+      logger.info(s"Processing sendEvent: $req")
       sendEvent(req)
       emailConnector.sendProcessedTemplatedEmail(ProcessedUploadTemplate(
         updatedRequest.email,
