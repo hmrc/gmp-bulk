@@ -23,6 +23,7 @@ import connectors.{EmailConnector, ProcessedUploadTemplate}
 import events.BulkEvent
 import metrics.ApplicationMetrics
 import models._
+
 import java.time.LocalDateTime
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.{BsonDocument, ObjectId}
@@ -34,18 +35,18 @@ import uk.gov.hmrc.mongo.play.json.{Codecs, CollectionFactory, PlayMongoReposito
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class BulkCalculationMongoRepositoryProvider @Inject()(metrics: ApplicationMetrics,
                                                        auditConnector: AuditConnector,
                                                        emailConnector : EmailConnector,
                                                        applicationConfig: ApplicationConfiguration,
-                                                       mongo: MongoComponent)
+                                                       mongo: MongoComponent,
+                                                       implicit val ec: ExecutionContext)
   extends Provider[BulkCalculationMongoRepository] {
   override def get(): BulkCalculationMongoRepository = {
-    new BulkCalculationMongoRepository(metrics, auditConnector, emailConnector : EmailConnector, applicationConfig, mongo)
+    new BulkCalculationMongoRepository(metrics, auditConnector, emailConnector : EmailConnector, applicationConfig, mongo,ec)
   }
 }
 
@@ -53,7 +54,8 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
                                                ac: AuditConnector,
                                                override val emailConnector : EmailConnector,
                                                applicationConfiguration: ApplicationConfiguration,
-                                               mongo: MongoComponent)
+                                               mongo: MongoComponent,
+                                               implicit val ec: ExecutionContext)
   extends PlayMongoRepository[BulkCalculationRequest](
       collectionName = "bulk-calculation",
       mongoComponent = mongo,

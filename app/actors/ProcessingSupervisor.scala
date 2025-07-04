@@ -17,18 +17,17 @@
 package actors
 
 import actors.Throttler.{RateInt, SetTarget}
-import org.apache.pekko.actor._
 import com.github.ghik.silencer.silent
 import config.ApplicationConfiguration
 import connectors.{DesConnector, IFConnector}
 import metrics.ApplicationMetrics
+import org.apache.pekko.actor._
 import play.api.Logging
 import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
 import uk.gov.hmrc.mongo.lock.{LockRepository, MongoLockRepository, TimePeriodLockService}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 @silent
@@ -38,7 +37,8 @@ class ProcessingSupervisor @Inject()(applicationConfig: ApplicationConfiguration
                                      val mongoLockRepository: MongoLockRepository,
                                      desConnector : DesConnector,
                                      ifConnector: IFConnector,
-                                     metrics : ApplicationMetrics)
+                                     metrics : ApplicationMetrics,
+                                     implicit val ec: ExecutionContext)
   extends Actor with ActorUtils with TimePeriodLockService with Logging {
 
   override val lockRepository: LockRepository = mongoLockRepository
