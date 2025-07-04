@@ -18,10 +18,12 @@ package config
 
 import com.google.common.math.IntMath.divide
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 import play.api.Configuration
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import java.math.RoundingMode
+import java.util.Base64
 
 trait ApplicationConfig {
   val bulkProcessingBatchSize: Int
@@ -42,4 +44,31 @@ class ApplicationConfiguration@Inject()(configuration: Configuration) extends Ap
   override val unavailablePeriodDuration: Int = configuration.getOptional[Int](s"circuit-breaker.unavailable-period-duration").getOrElse(300)
   override val unstablePeriodDuration: Int = configuration.getOptional[Int](s"circuit-breaker.unstable-period-duration").getOrElse(60)
   override val ifEnabled: Boolean = configuration.getOptional[Boolean]("ifs-enabled").getOrElse(false)
+}
+@Singleton
+class AppConfig @Inject()(implicit
+                          configuration: Configuration,
+                          servicesConfig: ServicesConfig,
+                          val featureSwitches: FeatureSwitches
+                         ) {
+
+  import servicesConfig._
+
+  def hipUrl: String = servicesConfig.baseUrl("hip")
+  private val clientId: String = getString("microservice.services.hip.client-id")
+  private val secret: String   = getString("microservice.services.hip.client-secret")
+
+  def hipAuthorisationToken: String =
+    Base64.getEncoder.encodeToString(s"$clientId:$secret".getBytes("UTF-8"))
+
+  def hipEnvironmentHeader: (String, String) =
+    "Environment" -> getString("microservice.services.hip.environment")
+
+  // These are now constants
+  def originatorIdKey: String           = Constants.OriginatorIdKey
+  def originatorIdValue: String         = getString("microservice.services.hip.originator-id-value")
+  def originatingSystem: String         = Constants.XOriginatingSystemHeader
+  def transmittingSystem: String        = Constants.XTransmittingSystemHeader
+
+  def isHipEnabled: Boolean = featureSwitches.hipIntegration.enabled
 }
