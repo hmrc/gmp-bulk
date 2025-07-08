@@ -53,7 +53,7 @@ class BulkCalculationMongoRepositorySpec
 
   private val applicationConfiguration = mock[ApplicationConfiguration]
   when(applicationConfiguration.bulkProcessingBatchSize) thenReturn 100
-  when(applicationConfiguration.bulkCompletingBatchSize) thenReturn 1
+  when(applicationConfiguration.bulkCompletingBatchSize) thenReturn 10
 
   private val emailConnector = mock[EmailConnector]
   private val auditConnector = mock[AuditConnector]
@@ -79,10 +79,10 @@ class BulkCalculationMongoRepositorySpec
   "findAndComplete" - {
 
     "must retrieve all incomplete bulks and complete them" in {
-      (0 until 9).foreach(int => generateBulk(int.toString))
+      (1 until 100).foreach(int => generateBulk(int.toString))
 
       val numberOfIncompleteDocumentsBefore = repository.findIncompleteBulk().futureValue
-      numberOfIncompleteDocumentsBefore.length mustEqual 9
+      numberOfIncompleteDocumentsBefore.length mustEqual 99
 
       repository.findAndComplete().futureValue
 
