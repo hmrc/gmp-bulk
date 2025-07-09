@@ -293,7 +293,7 @@ class TimerBasedThrottler(var rate: Rate) extends Actor with FSM[State, Data] {
 
   initialize()
 
-  private def startTimer(rate: Rate) = setTimer("morePermits", Tick, rate.duration, true)
+  private def startTimer(rate: Rate) = startTimerWithFixedDelay("morePermits", Tick, rate.duration)
   private def stopTimer() = cancelTimer("morePermits")
 
   // Rate.numberOfCalls is an integer. So, the finest granularity of timing (i.e., highest
