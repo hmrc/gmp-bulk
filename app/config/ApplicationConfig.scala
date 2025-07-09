@@ -25,6 +25,7 @@ import java.math.RoundingMode
 
 trait ApplicationConfig {
   val bulkProcessingBatchSize: Int
+  val bulkCompletingBatchSize: Int
   val numberOfCallsToTriggerStateChange: Int
   val unavailablePeriodDuration: Int
   val unstablePeriodDuration: Int
@@ -36,6 +37,7 @@ trait ApplicationConfig {
 class ApplicationConfiguration@Inject()(configuration: Configuration) extends ApplicationConfig {
 
   override lazy val bulkProcessingBatchSize = configuration.getOptional[Int](s"bulk-batch-size").getOrElse(100)
+  override lazy val bulkCompletingBatchSize = configuration.getOptional[Int](s"bulk-batch-size").getOrElse(50)
   override lazy val bulkProcessingTps = configuration.getOptional[Int](s"bulk-processing-tps").getOrElse(10)
   override val bulkProcessingInterval: Int = divide(bulkProcessingBatchSize, bulkProcessingTps, RoundingMode.UP)
   override val numberOfCallsToTriggerStateChange = configuration.getOptional[Int](s"circuit-breaker.number-of-calls-to-trigger-state-change").getOrElse(10)

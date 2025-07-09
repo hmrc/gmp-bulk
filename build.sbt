@@ -1,10 +1,15 @@
 import sbt.Keys.resolvers
 import scoverage.ScoverageKeys
 import uk.gov.hmrc.DefaultBuildSettings.{defaultSettings, scalaSettings}
+
 import java.time.LocalDate
 import de.heikoseeberger.sbtheader.HeaderPlugin.autoImport.{HeaderLicense, headerLicense}
+import uk.gov.hmrc.DefaultBuildSettings
 
 val appName = "gmp-bulk"
+
+ThisBuild / majorVersion := 2
+ThisBuild / scalaVersion := "2.13.12"
 
 lazy val scoverageSettings = Seq(
   ScoverageKeys.coverageExcludedPackages := "<empty>;app.*;gmp.*;config.*;metrics.*;testOnlyDoNotUseInAppConf.*;views.html.*;uk.gov.hmrc.*;prod.*",
@@ -36,7 +41,6 @@ lazy val microservice = Project(appName, file("."))
     routesGenerator := InjectedRoutesGenerator,
     resolvers += Resolver.typesafeRepo("releases")
   )
-  .settings(scalaVersion := "2.13.12")
   .settings(
     scalacOptions ++= List(
       "-Yrangepos",
@@ -47,4 +51,8 @@ lazy val microservice = Project(appName, file("."))
       "-P:silencer:lineContentFilters=^\\w",
       "-P:silencer:pathFilters=routes"
     ))
-  
+
+lazy val it = project
+  .enablePlugins(play.sbt.PlayScala)
+  .dependsOn(microservice % "test->test")
+  .settings(DefaultBuildSettings.itSettings())
