@@ -28,6 +28,8 @@ class Module(environment: Environment, configuration: Configuration) extends Abs
     bind(classOf[HttpClientV2]).toProvider(classOf[HttpClientV2Provider])
     bind(classOf[BulkCalculationMongoRepository]).toProvider(classOf[BulkCalculationMongoRepositoryProvider])
     bind(classOf[Scheduler]).asEagerSingleton()
+    bind(classOf[AppStartupJobs]).to(classOf[AppStartupJobsImpl]).asEagerSingleton()
+    bind(classOf[Startup]).asEagerSingleton()
   }
 
 }
