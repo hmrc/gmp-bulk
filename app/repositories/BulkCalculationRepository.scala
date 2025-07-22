@@ -23,8 +23,9 @@ import connectors.{EmailConnector, ProcessedUploadTemplate}
 import events.BulkEvent
 import metrics.ApplicationMetrics
 import models._
+
 import java.time.LocalDateTime
-import org.mongodb.scala.MongoCollection
+import org.mongodb.scala.{MongoCollection, Observable}
 import org.mongodb.scala.bson.{BsonDocument, ObjectId}
 import org.mongodb.scala.model.{Filters, FindOneAndUpdateOptions, IndexModel, IndexOptions, Indexes, Sorts, Updates}
 import org.mongodb.scala.result.UpdateResult
@@ -73,7 +74,8 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
         IndexModel(Indexes.ascending("isParent"), IndexOptions().name("isParent")),
         IndexModel(Indexes.ascending("isParent","complete"), IndexOptions().name("isParentAndComplete")),
         IndexModel(Indexes.ascending("isChild", "hasValidRequest", "hasResponse", "hasValidationErrors"), IndexOptions().name("childQuery")),
-        IndexModel(Indexes.ascending("isChild", "bulkId"), IndexOptions().name("childBulkIndex"))
+        IndexModel(Indexes.ascending("isChild", "bulkId"), IndexOptions().name("childBulkIndex")),
+        IndexModel(Indexes.ascending("bulkId", "isChild"), IndexOptions().name("bulkChildIndex"))
       )
     ) with BulkCalculationRepository with Logging {
 
@@ -298,13 +300,32 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
 
 
 
-  override def findAndComplete() = {
+  override def findAndComplete(): Future[Boolean] = {
 
     val startTime = System.currentTimeMillis()
-    implicit val hc = HeaderCarrier()
+    implicit val hc: HeaderCarrier = HeaderCarrier()
     logger.info("[BulkCalculationRepository][findAndComplete]: starting ")
+
+    for {
+      incompleteBulks: List[ProcessedBulkCalculationRequest] <- findIncompleteBulk()
+      bool <- completeIncompleteBulks(incompleteBulks, startTime)
+    } yield bool
+
+  }
+
+  private def completeIncompleteBulks(incompleteBulks: List[ProcessedBulkCalculationRequest], startTime: Long)(implicit hc: HeaderCarrier): Future[Boolean] = {
+    val groups = incompleteBulks.grouped(applicationConfiguration.bulkCompletingBatchSize).toList
+    groups.foldLeft(Future.successful(true)){ (accumulatedFuture, nextGroup) =>
+      accumulatedFuture.flatMap {
+        case false => Future.successful(false)
+        case true => completeIncompleteBulksChunk(nextGroup, startTime)
+      }
+    }
+  }
+
+  private def completeIncompleteBulksChunk(incompleteBulk: List[ProcessedBulkCalculationRequest], startTime: Long)(implicit hc: HeaderCarrier): Future[Boolean] = {
     val result: Future[Boolean] = for {
-      processedBulkCalReqList <- getProcessedBulkCalRequestList(startTime)
+      processedBulkCalReqList <- getProcessedBulkCalRequestList(incompleteBulk, startTime)
       _ = logger.info(s"[BulkCalculationRepository][findAndComplete]: getProcessedBulkCalRequestList returned ${processedBulkCalReqList.size} records")
       booleanList <-  Future.sequence(processedBulkCalReqList.map { request =>
         val req: ProcessedBulkCalculationRequest = request.getOrElse(sys.error("Processed Bulk calculation Request missing"))
@@ -319,12 +340,11 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
       logTimer(startTime)
       res
     }.recover {
-        case e =>
-          logger.error(s"[BulkCalculationRepository][findAndComplete] ${e.getMessage}", e)
-          logTimer(startTime)
-          false
-      }
-
+      case e =>
+        logger.error(s"[BulkCalculationRepository][findAndComplete] ${e.getMessage}", e)
+        logTimer(startTime)
+        false
+    }
   }
 
   private def updateRequestAndSendEmailAndEvent(req: ProcessedBulkCalculationRequest)(implicit hc: HeaderCarrier)= {
@@ -353,20 +373,20 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     }
 
 
-  def getProcessedBulkCalRequestList(startTime: Long) = for {
-    incompleteBulk <- findIncompleteBulk()
-    _ = logTimer(startTime)
-    _ = logger.info(s"[BulkCalculationRepository][getProcessedBulkCalRequestList]: findIncompleteBulk returned ${incompleteBulk.size} records")
-    processedBulkCalcReqOpt <- Future.sequence(incompleteBulk.map { req =>
+  def getProcessedBulkCalRequestList(incompleteBulk: List[ProcessedBulkCalculationRequest], startTime: Long) = {
+    logTimer(startTime)
+    logger.info(s"[BulkCalculationRepository][getProcessedBulkCalRequestList]: findIncompleteBulk returned ${incompleteBulk.size} records")
+    for {processedBulkCalcReqOpt <- Future.sequence(incompleteBulk.map { req =>
       for {
         countedDocs <- countChildDocWithValidRequest(req._id)
         _ = logger.info(s"[BulkCalculationRepository][getProcessedBulkCalRequestList]: countChildDocWithValidRequest returned ${countedDocs} for id ${req._id}")
         processedBulkCalcOpt <- if (countedDocs == 0) updateCalculationRequestsForProcessedBulkReq(req) else Future.successful(None)
       } yield (processedBulkCalcOpt)
     })
-  } yield {
-    logger.info(s"[BulkCalculationRepository][getProcessedBulkCalRequestList]: updateCalculationRequestsForProcessedBulkReq returned ${processedBulkCalcReqOpt.size} records")
-    processedBulkCalcReqOpt.filter(_.isDefined)
+         } yield {
+      logger.info(s"[BulkCalculationRepository][getProcessedBulkCalRequestList]: updateCalculationRequestsForProcessedBulkReq returned ${processedBulkCalcReqOpt.size} records")
+      processedBulkCalcReqOpt.filter(_.isDefined)
+    }
   }
 
   private def updateCalculationRequestsForProcessedBulkReq(req: ProcessedBulkCalculationRequest ) = {
@@ -379,7 +399,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
 
   }
 
-  private def findIncompleteBulk(): Future[List[ProcessedBulkCalculationRequest]] = processedBulkCalsReqCollection.find(Filters.and(
+  def findIncompleteBulk(): Future[List[ProcessedBulkCalculationRequest]] = processedBulkCalsReqCollection.find(Filters.and(
     Filters.eq("isParent", true),
     Filters.eq("complete", false)))
     .sort(Sorts.ascending("_id"))
@@ -388,6 +408,10 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
     .collect()
     .toFuture().map(_.toList)
 
+  def findIncompleteBulkObservable(): Observable[ProcessedBulkCalculationRequest] = processedBulkCalsReqCollection.find(Filters.and(
+      Filters.eq("isParent", true),
+      Filters.eq("complete", false)))
+    .sort(Sorts.ascending("_id"))
 
   private def countChildDocWithValidRequest(bulkRequestId: String): Future[Long] = {
     val criteria = Filters.and(
