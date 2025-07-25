@@ -16,25 +16,25 @@
 
 package actors
 
-import java.util.concurrent.TimeUnit
-import org.apache.pekko.actor._
 import com.google.inject.Inject
 import config.{AppConfig, ApplicationConfiguration}
-import connectors.{DesConnector, DesGetHiddenRecordResponse, IFConnector}
+import connectors.{DesConnector, DesGetHiddenRecordResponse, HipConnector, IFConnector}
 import metrics.ApplicationMetrics
-import models.{CalculationResponse, GmpBulkCalculationResponse, ProcessReadyCalculationRequest}
-import play.api.http.Status
+import models.{CalculationResponse, GmpBulkCalculationResponse, HipCalculationRequest, HipCalculationResponse, ProcessReadyCalculationRequest}
+import org.apache.pekko.actor._
 import play.api.Logging
+import play.api.http.Status
 import repositories.BulkCalculationMongoRepository
 import uk.gov.hmrc.http.UpstreamErrorResponse
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
 
 trait CalculationRequestActorComponent {
   val desConnector: DesConnector
   val ifConnector: IFConnector
+  val hipConnector: HipConnector
   val repository: BulkCalculationMongoRepository
   val metrics: ApplicationMetrics
   val applicationConfig: ApplicationConfiguration
@@ -66,7 +66,10 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
           val tryCallingDes = Try {
             if(appConfig.isIfsEnabled) {
               ifConnector.calculate(request.validCalculationRequest.get)
-            } else {
+            } else if (appConfig.isHipEnabled) {
+              val hipRequest = HipCalculationRequest.from(request.validCalculationRequest.get)
+              hipConnector.calculate(hipRequest)
+            } else{
               desConnector.calculate(request.validCalculationRequest.get)
             }
           }
@@ -76,6 +79,18 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
               successfulCall.map {
                 case x: CalculationResponse => {
                   repository.insertResponseByReference(request.bulkId, request.lineId, GmpBulkCalculationResponse.createFromCalculationResponse(x)).map {
+
+                    result => {
+                      // $COVERAGE-OFF$
+                      metrics.processRequest(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
+                      logger.debug(s"[CalculationRequestActor] InsertResponse : $result")
+                      // $COVERAGE-ON$
+                      origSender ! result
+                    }
+                  }
+                }
+                case hipResponse: HipCalculationResponse => {
+                  repository.insertResponseByReference(request.bulkId, request.lineId, GmpBulkCalculationResponse.createFromHipCalculationResponse(hipResponse)).map {
 
                     result => {
                       // $COVERAGE-OFF$
@@ -173,6 +188,7 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
 class DefaultCalculationRequestActor @Inject()(override val repository : BulkCalculationMongoRepository,
                                                override val desConnector : DesConnector,
                                                override val ifConnector: IFConnector,
+                                               override val hipConnector: HipConnector,
                                                override val metrics : ApplicationMetrics,
                                                override val applicationConfig: ApplicationConfiguration,
                                                override val appConfig: AppConfig

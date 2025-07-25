@@ -19,7 +19,7 @@ package actors
 import org.apache.pekko.actor.{ActorSystem, Props}
 import org.apache.pekko.testkit.{DefaultTimeout, ImplicitSender, TestKit}
 import config.{AppConfig, ApplicationConfiguration}
-import connectors.{DesConnector, DesGetHiddenRecordResponse, DesGetSuccessResponse, IFConnector}
+import connectors.{DesConnector, DesGetHiddenRecordResponse, DesGetSuccessResponse, HipConnector, IFConnector}
 import helpers.RandomNino
 import metrics.ApplicationMetrics
 import models._
@@ -40,6 +40,7 @@ import scala.language.postfixOps
 
 class CalculationRequestActorMock(val desConnector: DesConnector,
                                   val ifConnector: IFConnector,
+                                  val hipConnector: HipConnector,
                                   val repository: BulkCalculationMongoRepository,
                                   val metrics: ApplicationMetrics,
                                   val applicationConfig: ApplicationConfiguration,
@@ -51,6 +52,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
 
   val mockDesConnector = mock[DesConnector]
   val mockIFConnector = mock[IFConnector]
+  val mockHipConnector = mock[HipConnector]
   val mockRepository = mock[BulkCalculationMongoRepository]
   val mockMetrics = mock[ApplicationMetrics]
   val mockApplicationConfig = mock[ApplicationConfiguration]
@@ -61,6 +63,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
   before {
     reset(mockDesConnector)
     reset(mockIFConnector)
+    reset(mockHipConnector)
     reset(mockRepository)
     reset(mockMetrics)
     reset(mockApplicationConfig)
@@ -75,6 +78,86 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
   "Calculation Request Actor" when {
 
     val response = CalculationResponse("", 0, None, None, None, Scon("", 0, ""), Nil)
+    val hipResponse = HipCalculationResponse("AA123456A","S2730000T","",None,None,None,Nil)
+
+    "hip is enabled" should {
+      "successfully save" in {
+
+        when(mockAppConfig.isIfsEnabled).thenReturn(false)
+        when(mockAppConfig.isHipEnabled).thenReturn(true)
+
+        when(mockHipConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.successful(hipResponse))
+        when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
+
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockHipConnector, mockMetrics, mockApplicationConfig, mockAppConfig))
+
+        within(testTimeout) {
+
+          actorRef ! ProcessReadyCalculationRequest("test", 1, Some(ValidCalculationRequest("S1401234Q", RandomNino.generate, "Smith", "Bill", None, None, None, None, None, None)), None, None)
+          expectMsg(true)
+        }
+
+      }
+
+      "get failure when fails to send to HIP" in {
+
+        when(mockAppConfig.isIfsEnabled).thenReturn(false)
+        when(mockAppConfig.isHipEnabled).thenReturn(true)
+        when(mockHipConnector.calculate(ArgumentMatchers.any())).thenThrow(new RuntimeException("The calculation failed"))
+
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector,mockHipConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
+
+        within(testTimeout) {
+
+          actorRef ! ProcessReadyCalculationRequest("test", 1, Some(ValidCalculationRequest("S1401234Q", RandomNino.generate, "Smith", "Bill", None, None, None, None, None, None)), None, None)
+          expectMsgClass(classOf[org.apache.pekko.actor.Status.Failure])
+
+        }
+      }
+
+      "insert a failed response when a 400 code is returned from HIP" in {
+
+        val ex = UpstreamErrorResponse("Call to Individual Pension calculation on NPS Service failed with status code 400", 400, 400)
+
+        when(mockAppConfig.isIfsEnabled).thenReturn(false)
+        when(mockAppConfig.isHipEnabled).thenReturn(true)
+        when(mockHipConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(ex))
+        when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
+
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockHipConnector,mockMetrics, mockApplicationConfig,mockAppConfig))
+
+        within(testTimeout) {
+
+          actorRef ! ProcessReadyCalculationRequest("test", 1, Some(ValidCalculationRequest("S1401234Q", RandomNino.generate, "Smith", "Bill", None, None, None, None, None, None)), None, None)
+          expectMsg(true)
+
+          verify(mockRepository).insertResponseByReference("test", 1, GmpBulkCalculationResponse(List(), 400, None, None, None, containsErrors = true))
+        }
+      }
+
+      "insert a failed response when a 500 code is returned from HIP" in {
+        val exObj = UpstreamErrorResponse("Call to Individual Pension calculation on NPS Service failed with status code 500", 500, 500)
+
+        when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())) thenReturn Future.successful(DesGetSuccessResponse)
+        when(mockAppConfig.isIfsEnabled).thenReturn(false)
+        when(mockAppConfig.isHipEnabled).thenReturn(true)
+        when(mockHipConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(exObj))
+        when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
+
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockHipConnector,mockMetrics, mockApplicationConfig,mockAppConfig))
+
+        within(testTimeout) {
+
+          actorRef ! ProcessReadyCalculationRequest("test", 1, Some(ValidCalculationRequest("S1401234Q", RandomNino.generate, "Smith", "Bill", None, None, None, None, None, None)), None, None)
+          expectMsgClass(classOf[org.apache.pekko.actor.Status.Failure])
+
+          //verify(mockRepository).insertResponseByReference("test", 1, GmpBulkCalculationResponse(List(), 500, None, None, None, containsErrors = true))
+        }
+
+      }
+    }
+
+
 
     "if is enabled" should {
       "successfully save" in {
@@ -83,7 +166,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         when(mockIFConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.successful(response))
         when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
 
-        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockHipConnector,mockMetrics, mockApplicationConfig,mockAppConfig))
 
         within(testTimeout) {
 
@@ -98,7 +181,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         when(mockAppConfig.isIfsEnabled).thenReturn(true)
         when(mockIFConnector.calculate(ArgumentMatchers.any())).thenThrow(new RuntimeException("The calculation failed"))
 
-        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector,mockHipConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
 
         within(testTimeout) {
 
@@ -117,7 +200,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         when(mockIFConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(ex))
         when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
 
-        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockHipConnector,mockMetrics, mockApplicationConfig,mockAppConfig))
 
         within(testTimeout) {
 
@@ -136,7 +219,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         when(mockIFConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(exObj))
         when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
 
-        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockHipConnector,mockMetrics, mockApplicationConfig,mockAppConfig))
 
         within(testTimeout) {
 
@@ -156,7 +239,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         when(mockDesConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.successful(response))
         when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
 
-        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockHipConnector,mockMetrics, mockApplicationConfig,mockAppConfig))
 
         within(testTimeout) {
 
@@ -171,7 +254,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         when(mockAppConfig.isIfsEnabled).thenReturn(false)
         when(mockDesConnector.calculate(ArgumentMatchers.any())).thenThrow(new RuntimeException("The calculation failed"))
 
-        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockHipConnector,mockMetrics, mockApplicationConfig,mockAppConfig))
 
         within(testTimeout) {
 
@@ -190,7 +273,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         when(mockDesConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(ex))
         when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
 
-        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockHipConnector,mockMetrics, mockApplicationConfig,mockAppConfig))
 
         within(testTimeout) {
 
@@ -208,7 +291,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         when(mockDesConnector.getPersonDetails(ArgumentMatchers.eq(nino))).thenReturn(Future.successful(DesGetHiddenRecordResponse))
         when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
 
-        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector,mockHipConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
 
         within(testTimeout) {
 
@@ -230,7 +313,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         when(mockDesConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(exObj))
         when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
 
-        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
+        val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockHipConnector,mockMetrics, mockApplicationConfig,mockAppConfig))
 
         within(testTimeout) {
 
@@ -245,7 +328,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
 
     "the message is the wrong type should get failure" in {
 
-      val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
+      val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockHipConnector,mockMetrics, mockApplicationConfig,mockAppConfig))
 
       within(testTimeout) {
 
@@ -256,7 +339,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
 
     "a STOP message is recieved should send STOP message to sender" in {
 
-      val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockMetrics, mockApplicationConfig,mockAppConfig))
+      val actorRef = system.actorOf(Props(classOf[DefaultCalculationRequestActor], mockRepository, mockDesConnector, mockIFConnector, mockHipConnector,mockMetrics, mockApplicationConfig,mockAppConfig))
 
       within(testTimeout) {
 

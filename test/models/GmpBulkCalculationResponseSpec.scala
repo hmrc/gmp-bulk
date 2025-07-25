@@ -155,4 +155,239 @@ class GmpBulkCalculationResponseSpec extends PlaySpec with GuiceOneAppPerSuite w
 
   }
 
+  "GmpBulkCalculationResponse.createFromHipCalculationResponse" should {
+
+    "Correctly transform a full HIP response with all fields" in{
+
+      val hipJson = Json.parse(
+        s"""{
+          "nationalInsuranceNumber": "AA000001A",
+          "schemeContractedOutNumberDetails": "S2123456B",
+          "rejectionReason": "No match for person details provided",
+          "payableAgeDate": "2022-06-27",
+          "statePensionAgeDate": "2022-06-27",
+          "dateOfDeath": "2022-06-27",
+          "GuaranteedMinimumPensionDetailsList": [
+          {
+          "schemeMembershipStartDate": "2022-06-27",
+          "schemeMembershipEndDate": "2022-06-27",
+          "revaluationRate": "FIXED",
+          "post1988GMPContractedOutDeductionsValue": 10.56,
+          "gmpContractedOutDeductionsAllRateValue": 10.56,
+          "gmpErrorCode": "Input revaluation date is before the termination date held on hmrc records",
+          "revaluationCalculationSwitchIndicator": true,
+          "post1990GMPContractedOutTrueSexTotal": 10.56,
+          "post1990GMPContractedOutOppositeSexTotal": 10.56,
+          "inflationProofBeyondDateofDeath": true,
+          "contributionsAndEarningsDetailsList": [{
+                                                 "taxYear": 2022,
+                                                 "contributionOrEarningsAmount": 10.56
+                                                 }]
+          }
+          ]
+          }""").as[HipCalculationResponse]
+
+
+      val gmpResponse = GmpBulkCalculationResponse.createFromHipCalculationResponse(hipJson)
+
+      gmpResponse.spaDate mustBe (Some(LocalDate.parse("2022-06-27")))
+      gmpResponse.payableAgeDate mustBe (Some(LocalDate.parse("2022-06-27")))
+      gmpResponse.dateOfDeath mustBe (Some(LocalDate.parse("2022-06-27")))
+      gmpResponse.calculationPeriods must have size 1
+      val period = gmpResponse.calculationPeriods.head
+      period.startDate mustBe (Some(LocalDate.parse("2022-06-27")))
+      period.endDate mustBe (LocalDate.parse("2022-06-27"))
+      period.revaluationRate mustBe 2 // FIXED mapped to 2
+      period.gmpTotal mustBe "10.56"
+      period.post88GMPTotal mustBe "10.56"
+      period.revalued must be (Some(1))
+      period.dualCalcPost90TrueTotal mustBe Some("10.56")
+      period.dualCalcPost90OppositeTotal mustBe Some("10.56")
+      period.inflationProofBeyondDod mustBe Some(1)
+      period.contsAndEarnings.isDefined mustBe true
+      val earnings = period.contsAndEarnings.get.head
+      earnings.taxYear mustBe 2022
+      earnings.contEarnings mustBe "11" // Note: For >=1987, no decimals and rounding to nearest integer
+      gmpResponse.globalErrorCode mustBe 63119
+      gmpResponse.containsErrors mustBe true
+      gmpResponse.hasErrors mustBe true
+      gmpResponse.errorCodes must contain (gmpResponse.globalErrorCode)
+      gmpResponse.errorCodes must contain (period.errorCode)
+
+
+    }
+
+    "handle an empty GuaranteedMinimumPensionDetailsList gracefully" in {
+      val hipJson =
+        """
+          {
+            "nationalInsuranceNumber": "",
+            "schemeContractedOutNumberDetails": "",
+            "rejectionReason": "Some error",
+            "GuaranteedMinimumPensionDetailsList": []
+          }
+        """
+      val hipResponse = Json.parse(hipJson).as[HipCalculationResponse]
+      val result = GmpBulkCalculationResponse.createFromHipCalculationResponse(hipResponse)
+
+      result.calculationPeriods mustBe empty
+    }
+
+    "handle an empty contributionsAndEarningsDetailsList gracefully" in{
+      val hipJson =
+        """{
+          "nationalInsuranceNumber": "AA000001A",
+          "schemeContractedOutNumberDetails": "S2123456B",
+          "rejectionReason": "No match for person details provided",
+          "payableAgeDate": "2022-06-27",
+          "statePensionAgeDate": "2022-06-27",
+          "dateOfDeath": "2022-06-27",
+          "GuaranteedMinimumPensionDetailsList": [
+          {
+          "schemeMembershipStartDate": "2022-06-27",
+          "schemeMembershipEndDate": "2022-06-27",
+          "revaluationRate": "(NONE)",
+          "post1988GMPContractedOutDeductionsValue": 10.56,
+          "gmpContractedOutDeductionsAllRateValue": 10.56,
+          "gmpErrorCode": "Input revaluation date is before the termination date held on hmrc records",
+          "revaluationCalculationSwitchIndicator": true,
+          "post1990GMPContractedOutTrueSexTotal": 10.56,
+          "post1990GMPContractedOutOppositeSexTotal": 10.56,
+          "inflationProofBeyondDateofDeath": true,
+          "contributionsAndEarningsDetailsList": []
+          }
+          ]
+          }
+          """
+
+      val hipResponse =Json.parse(hipJson).as[HipCalculationResponse]
+
+      val gmpResponse = GmpBulkCalculationResponse.createFromHipCalculationResponse(hipResponse)
+
+      gmpResponse.calculationPeriods.head.contsAndEarnings.head mustBe empty
+
+    }
+
+    "handle an empty GuaranteedMinimumPensionDetailsList and rejectionReason gracefully" in {
+      val hipJson =
+        """
+          {
+            "nationalInsuranceNumber": "",
+            "schemeContractedOutNumberDetails": "",
+            "rejectionReason": "",
+            "GuaranteedMinimumPensionDetailsList": []
+          }
+        """
+      val hipResponse = Json.parse(hipJson).as[HipCalculationResponse]
+      val result = GmpBulkCalculationResponse.createFromHipCalculationResponse(hipResponse)
+
+      result.globalErrorCode mustBe 0
+    }
+  }
+
+  "createFromHipGmpDetails " should {
+    "Correctly map revaluationRate string enum to expected int values" in {
+
+      val details = GuaranteedMinimumPensionDetails(
+        schemeMembershipStartDate = Some("2020-01-01"),
+        schemeMembershipEndDate = "2024-01-01",
+        gmpContractedOutDeductionsAllRateValue = BigDecimal("123.45"),
+        post1988GMPContractedOutDeductionsValue = BigDecimal("67.89"),
+        revaluationRate = "FIXED",
+        gmpErrorCode = "Input revaluation date is before the termination date held on hmrc records",
+        revaluationCalculationSwitchIndicator = true,
+        post1990GMPContractedOutTrueSexTotal = Some(BigDecimal("45.67")),
+        post1990GMPContractedOutOppositeSexTotal = Some(BigDecimal("23.45")),
+        inflationProofBeyondDateofDeath = false,
+        contributionsAndEarningsDetailsList = None
+      )
+
+      val result = CalculationPeriod.createFromHipGmpDetails(details)
+      result.revaluationRate mustBe 2
+
+    }
+
+    "default to 0 if revaluationRate is unknown" in {
+
+      val details = GuaranteedMinimumPensionDetails(
+        schemeMembershipStartDate = Some("2020-01-01"),
+        schemeMembershipEndDate = "2024-01-01",
+        gmpContractedOutDeductionsAllRateValue = BigDecimal("123.45"),
+        post1988GMPContractedOutDeductionsValue = BigDecimal("67.89"),
+        revaluationRate = "UNKNOWN",
+        gmpErrorCode = "Input revaluation date is before the termination date held on hmrc records",
+        revaluationCalculationSwitchIndicator = true,
+        post1990GMPContractedOutTrueSexTotal = Some(BigDecimal("45.67")),
+        post1990GMPContractedOutOppositeSexTotal = Some(BigDecimal("23.45")),
+        inflationProofBeyondDateofDeath = false,
+        contributionsAndEarningsDetailsList = None
+      )
+
+      val result = CalculationPeriod.createFromHipGmpDetails(details)
+      result.revaluationRate mustBe 0
+
+    }
+
+    "Correctly map revaluationRate (NONE) to expected 0 int value" in {
+
+      val details = GuaranteedMinimumPensionDetails(
+        schemeMembershipStartDate = Some("2020-01-01"),
+        schemeMembershipEndDate = "2024-01-01",
+        gmpContractedOutDeductionsAllRateValue = BigDecimal("123.45"),
+        post1988GMPContractedOutDeductionsValue = BigDecimal("67.89"),
+        revaluationRate = "(NONE)",
+        gmpErrorCode = "Input revaluation date is before the termination date held on hmrc records",
+        revaluationCalculationSwitchIndicator = true,
+        post1990GMPContractedOutTrueSexTotal = Some(BigDecimal("45.67")),
+        post1990GMPContractedOutOppositeSexTotal = Some(BigDecimal("23.45")),
+        inflationProofBeyondDateofDeath = false,
+        contributionsAndEarningsDetailsList = None
+      )
+
+      val result = CalculationPeriod.createFromHipGmpDetails(details)
+      result.revaluationRate mustBe 0
+
+    }
+    "Correctly map revaluationRate S148 to expected 1 int value" in {
+
+      val details = GuaranteedMinimumPensionDetails(
+        schemeMembershipStartDate = Some("2020-01-01"),
+        schemeMembershipEndDate = "2024-01-01",
+        gmpContractedOutDeductionsAllRateValue = BigDecimal("123.45"),
+        post1988GMPContractedOutDeductionsValue = BigDecimal("67.89"),
+        revaluationRate = "S148",
+        gmpErrorCode = "Input revaluation date is before the termination date held on hmrc records",
+        revaluationCalculationSwitchIndicator = true,
+        post1990GMPContractedOutTrueSexTotal = Some(BigDecimal("45.67")),
+        post1990GMPContractedOutOppositeSexTotal = Some(BigDecimal("23.45")),
+        inflationProofBeyondDateofDeath = false,
+        contributionsAndEarningsDetailsList = None
+      )
+
+      val result = CalculationPeriod.createFromHipGmpDetails(details)
+      result.revaluationRate mustBe 1
+
+    }
+    "Correctly map revaluationRate LIMITED to expected 3 int value" in {
+
+      val details = GuaranteedMinimumPensionDetails(
+        schemeMembershipStartDate = Some("2020-01-01"),
+        schemeMembershipEndDate = "2024-01-01",
+        gmpContractedOutDeductionsAllRateValue = BigDecimal("123.45"),
+        post1988GMPContractedOutDeductionsValue = BigDecimal("67.89"),
+        revaluationRate = "LIMITED",
+        gmpErrorCode = "Input revaluation date is before the termination date held on hmrc records",
+        revaluationCalculationSwitchIndicator = true,
+        post1990GMPContractedOutTrueSexTotal = Some(BigDecimal("45.67")),
+        post1990GMPContractedOutOppositeSexTotal = Some(BigDecimal("23.45")),
+        inflationProofBeyondDateofDeath = false,
+        contributionsAndEarningsDetailsList = None
+      )
+
+      val result = CalculationPeriod.createFromHipGmpDetails(details)
+      result.revaluationRate mustBe 3
+
+    }
+  }
+
 }

@@ -19,6 +19,7 @@ package models
 import java.time.LocalDate
 import play.api.i18n.Messages
 import play.api.libs.json.{Json, OFormat}
+import utils.HipErrorCodeMapper
 
 case class ContributionsAndEarnings(taxYear: Int, contEarnings: String)
 
@@ -32,6 +33,17 @@ object ContributionsAndEarnings {
         val formatter = java.text.NumberFormat.getIntegerInstance
         formatter.setGroupingUsed(false)
         formatter.format(earnings.contributions_earnings)
+      }
+    })
+  }
+
+  //HIP Transformation
+  def createFromHipDetails(details: ContributionsAndEarningsDetails): ContributionsAndEarnings = {
+    ContributionsAndEarnings(details.taxYear, details.taxYear match {
+      case x if x < 1987 => f"${details.contributionOrEarningsAmount}%1.2f"
+      case _ => {
+        val formatter = java.text.NumberFormat.getIntegerInstance
+        formatter.format(details.contributionOrEarningsAmount)
       }
     })
   }
@@ -71,6 +83,7 @@ case class CalculationPeriod(startDate: Option[LocalDate],
 object CalculationPeriod {
   implicit val formats: OFormat[CalculationPeriod] = Json.format[CalculationPeriod]
 
+  //DES TRANSFORMATION
   def createFromNpsLgmpcalc(npsLgmpcalc: NpsLgmpcalc): CalculationPeriod = {
     CalculationPeriod(npsLgmpcalc.scheme_mem_start_date.map(LocalDate.parse(_)), LocalDate.parse(npsLgmpcalc.scheme_end_date),
       f"${npsLgmpcalc.gmp_cod_allrate_tot}%1.2f", f"${npsLgmpcalc.gmp_cod_post_eightyeight_tot}%1.2f", npsLgmpcalc.revaluation_rate, npsLgmpcalc.gmp_error_code,
@@ -81,6 +94,32 @@ object CalculationPeriod {
       npsLgmpcalc.npsLcntearn.map(earnings => earnings.map(ContributionsAndEarnings.createFromNpsLcntearn(_)))
     )
   }
+
+  def mapRevaluationRate(rate: String): Int = rate match {
+    case "(NONE)" => 0
+    case "S148"   => 1
+    case "FIXED"  => 2
+    case "LIMITED"=> 3
+    case _        => 0 // Default to 0 for unknown values
+  }
+
+  //HIP Transformation
+  def createFromHipGmpDetails(details: GuaranteedMinimumPensionDetails): CalculationPeriod = {
+    CalculationPeriod(
+      startDate = details.schemeMembershipStartDate.map(LocalDate.parse(_)),
+      endDate = LocalDate.parse(details.schemeMembershipEndDate),
+      gmpTotal = f"${details.gmpContractedOutDeductionsAllRateValue}%1.2f",
+      post88GMPTotal = f"${details.post1988GMPContractedOutDeductionsValue}%1.2f",
+      revaluationRate =  mapRevaluationRate(details.revaluationRate),//HIP sends revaluationRate as string,mapping to int.
+      errorCode = HipErrorCodeMapper.mapGmpErrorCode(details.gmpErrorCode),
+      revalued = Some(if (details.revaluationCalculationSwitchIndicator) 1 else 0),
+      dualCalcPost90TrueTotal = details.post1990GMPContractedOutTrueSexTotal.map(value => f"$value%1.2f"),
+      dualCalcPost90OppositeTotal = details.post1990GMPContractedOutOppositeSexTotal.map(value => f"$value%1.2f"),
+      inflationProofBeyondDod = Some(if (details.inflationProofBeyondDateofDeath) 1 else 0),
+      contsAndEarnings = details.contributionsAndEarningsDetailsList.map(details => details.map(ContributionsAndEarnings.createFromHipDetails))
+    )
+  }
+
 }
 
 
@@ -129,4 +168,19 @@ object GmpBulkCalculationResponse {
 
     )
   }
+
+  def createFromHipCalculationResponse(hipResponse: HipCalculationResponse):
+  GmpBulkCalculationResponse = {
+    val calcPeriod = hipResponse.GuaranteedMinimumPensionDetailsList.map(CalculationPeriod.createFromHipGmpDetails)
+    GmpBulkCalculationResponse(
+      calculationPeriods = calcPeriod,
+      globalErrorCode = HipErrorCodeMapper.mapRejectionReason(hipResponse.rejectionReason),
+      spaDate = hipResponse.statePensionAgeDate.map(LocalDate.parse(_)),
+      payableAgeDate= hipResponse.payableAgeDate.map(LocalDate.parse(_)),
+      dateOfDeath= hipResponse.dateOfDeath.map(LocalDate.parse(_)),
+      containsErrors = calcPeriod.exists(_.errorCode>0)|| HipErrorCodeMapper.mapRejectionReason(hipResponse.rejectionReason) >0
+
+    )
+  }
+
 }
