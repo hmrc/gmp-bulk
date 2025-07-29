@@ -34,7 +34,7 @@ import uk.gov.hmrc.mongo.lock.{Lock, MongoLockRepository, TimePeriodLockService}
 
 import java.time.Instant
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -107,7 +107,7 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
       val throttlerProbe = TestProbe()
       val calculationActorProbe = TestProbe()
 
-      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, ifConnector, metrics) {
+      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, ifConnector, metrics, ExecutionContext.global) {
         override lazy val throttler = throttlerProbe.ref
         override lazy val requestActor = calculationActorProbe.ref
         override lazy val repository = mockRepository
@@ -128,7 +128,7 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
       val throttlerProbe = TestProbe()
       val calculationActorProbe = TestProbe()
 
-      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, ifConnector, metrics) {
+      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, ifConnector, metrics, ExecutionContext.global) {
 
         override lazy val throttler = throttlerProbe.ref
         override lazy val requestActor = calculationActorProbe.ref

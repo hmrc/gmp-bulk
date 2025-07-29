@@ -28,7 +28,7 @@ import repositories.BulkCalculationMongoRepository
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 import java.util.concurrent.TimeUnit
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 
 trait CalculationRequestActorComponent {
@@ -37,6 +37,7 @@ trait CalculationRequestActorComponent {
   val repository: BulkCalculationMongoRepository
   val metrics: ApplicationMetrics
   val applicationConfig: ApplicationConfiguration
+  implicit val ec: ExecutionContext
 }
 
 class CalculationRequestActor extends Actor with ActorUtils with Logging {
@@ -172,6 +173,7 @@ class DefaultCalculationRequestActor @Inject()(override val repository : BulkCal
                                                override val desConnector : DesConnector,
                                                override val ifConnector: IFConnector,
                                                override val metrics : ApplicationMetrics,
-                                               override val applicationConfig: ApplicationConfiguration
+                                               override val applicationConfig: ApplicationConfiguration,
+                                               implicit val ec: ExecutionContext
                                               ) extends CalculationRequestActor with CalculationRequestActorComponent {
 }

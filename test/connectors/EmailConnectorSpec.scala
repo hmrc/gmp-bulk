@@ -22,7 +22,7 @@ import org.mockito.Mockito._
 import org.scalatest.{BeforeAndAfter, _}
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.Environment
-import play.api.libs.json. Json
+import play.api.libs.json.Json
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
@@ -30,14 +30,14 @@ import java.net.URL
 import java.time.format.DateTimeFormatter
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class EmailConnectorSpec extends HttpClientV2Helper with GuiceOneAppPerSuite with BeforeAndAfter {
 
   val environment = app.injector.instanceOf[Environment]
   lazy val servicesConfig = app.injector.instanceOf[ServicesConfig]
 
-  class TestEmailConnector extends EmailConnector(mockHttp, app.configuration, servicesConfig)
+  class TestEmailConnector extends EmailConnector(mockHttp, app.configuration, servicesConfig, ExecutionContext.global)
 
   implicit lazy val hc: HeaderCarrier = HeaderCarrier()
 
