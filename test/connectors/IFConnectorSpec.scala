@@ -35,7 +35,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 import scala.jdk.CollectionConverters._
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class IFConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite with WireMockHelper with BeforeAndAfter {
 
@@ -62,7 +62,7 @@ class IFConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite wit
     )
   }
 
-  class SUT(httpC:HttpClientV2 = http) extends IFConnector(httpC, servicesConfig, mockMetrics, applicationConfig) {
+  class SUT(httpC:HttpClientV2 = http) extends IFConnector(httpC, servicesConfig, mockMetrics, applicationConfig, ExecutionContext.global) {
     override lazy val serviceURL: String = "http://localhost:" + server.port()
   }
 

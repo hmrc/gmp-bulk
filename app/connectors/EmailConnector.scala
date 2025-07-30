@@ -27,8 +27,7 @@ import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
 
 import java.time.format.DateTimeFormatter
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext , Future}
 
 case class ReceivedUploadTemplate(email: String, uploadReference: String)
 
@@ -42,7 +41,8 @@ object SendTemplatedEmailRequest {
 
 class EmailConnector @Inject()(http: HttpClientV2,
                                val runModeConfiguration: Configuration,
-                               servicesConfig: ServicesConfig) extends Logging {
+                               servicesConfig: ServicesConfig,
+                               implicit val ec: ExecutionContext) extends Logging {
 
   def sendReceivedTemplatedEmail(template: ReceivedUploadTemplate)(implicit hc: HeaderCarrier): Future[Boolean] = {
 

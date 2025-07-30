@@ -29,15 +29,15 @@ import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import java.net.URL
 import java.util.concurrent.TimeUnit
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 
 class IFConnector @Inject()(
                              http: HttpClientV2,
                              servicesConfig: ServicesConfig,
                              val metrics: ApplicationMetrics,
-                             applicationConfig: ApplicationConfiguration
+                             applicationConfig: ApplicationConfiguration,
+                             implicit val ec: ExecutionContext
                            ) extends Logging with UsingCircuitBreaker {
 
   val serviceKey = servicesConfig.getConfString("ifs.key", "")

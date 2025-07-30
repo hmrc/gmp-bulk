@@ -29,8 +29,7 @@ import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.http.client.HttpClientV2
 
 import java.net.URL
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 sealed trait DesGetResponse
 
@@ -50,7 +49,9 @@ class DesConnector @Inject()(val runModeConfiguration: Configuration,
                              http: HttpClientV2,
                              val metrics: ApplicationMetrics,
                              servicesConfig: ServicesConfig,
-                             applicationConfig: ApplicationConfiguration) extends UsingCircuitBreaker {
+                             applicationConfig: ApplicationConfiguration,
+                             implicit val ec: ExecutionContext) extends UsingCircuitBreaker {
+
 
   val logger: Logger = Logger(this.getClass)
 

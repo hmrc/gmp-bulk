@@ -36,7 +36,7 @@ lazy val microservice = Project(appName, file("."))
     routesGenerator := InjectedRoutesGenerator,
     resolvers += Resolver.typesafeRepo("releases")
   )
-  .settings(scalaVersion := "2.13.12")
+  .settings(scalaVersion := "2.13.16")
   .settings(
     scalacOptions ++= List(
       "-Yrangepos",
