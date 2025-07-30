@@ -45,7 +45,7 @@ class BulkCalculationMongoRepositoryProvider @Inject()(metrics: ApplicationMetri
                                                        implicit val ec: ExecutionContext)
   extends Provider[BulkCalculationMongoRepository] {
   override def get(): BulkCalculationMongoRepository = {
-    new BulkCalculationMongoRepository(metrics, auditConnector, emailConnector : EmailConnector, applicationConfig, mongo,ec)
+    new BulkCalculationMongoRepository(metrics, auditConnector, emailConnector : EmailConnector, applicationConfig, mongo, ec)
   }
 }
 

@@ -41,7 +41,8 @@ object SendTemplatedEmailRequest {
 
 class EmailConnector @Inject()(http: HttpClientV2,
                                val runModeConfiguration: Configuration,
-                               servicesConfig: ServicesConfig, implicit val ec: ExecutionContext) extends Logging {
+                               servicesConfig: ServicesConfig,
+                               implicit val ec: ExecutionContext) extends Logging {
 
   def sendReceivedTemplatedEmail(template: ReceivedUploadTemplate)(implicit hc: HeaderCarrier): Future[Boolean] = {
 

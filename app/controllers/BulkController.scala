@@ -35,7 +35,7 @@ class BulkController @Inject()(authAction: AuthAction,
                                emailConnector: EmailConnector,
                                csvGenerator: CsvGenerator,
                                cc: MessagesControllerComponents,
-                               bulkCalculationMongoRepository : BulkCalculationMongoRepository,
+                               bulkCalculationMongoRepository: BulkCalculationMongoRepository,
                                implicit val ec: ExecutionContext) extends BackendController(cc) {
 
   implicit lazy val messages: Messages = MessagesImpl(cc.langs.availables.head, messagesApi)

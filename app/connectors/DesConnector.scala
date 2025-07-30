@@ -49,7 +49,8 @@ class DesConnector @Inject()(val runModeConfiguration: Configuration,
                              http: HttpClientV2,
                              val metrics: ApplicationMetrics,
                              servicesConfig: ServicesConfig,
-                             applicationConfig: ApplicationConfiguration,implicit val ec: ExecutionContext) extends UsingCircuitBreaker {
+                             applicationConfig: ApplicationConfiguration,
+                             implicit val ec: ExecutionContext) extends UsingCircuitBreaker {
 
 
   val logger: Logger = Logger(this.getClass)
