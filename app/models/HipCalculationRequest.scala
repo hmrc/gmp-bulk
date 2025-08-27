@@ -71,10 +71,10 @@ object HipCalculationRequest {
 
   def from(calcReq: ValidCalculationRequest): HipCalculationRequest = {
     val revalEnum = calcReq.revaluationRate.map {
-      case 1 => EnumRevaluationRate.FIXED
-      case 2 => EnumRevaluationRate.LIMITED
-      case 3 => EnumRevaluationRate.S148
       case 0 => EnumRevaluationRate.NONE
+      case 1 => EnumRevaluationRate.S148
+      case 2 => EnumRevaluationRate.FIXED
+      case 3 => EnumRevaluationRate.LIMITED
     }
     val calcTypeEnum = calcReq.calctype.map {
       case 0 => EnumCalcRequestType.DOL
@@ -94,7 +94,7 @@ object HipCalculationRequest {
       revaluationDate = calcReq.revaluationDate.getOrElse("(NONE)"),
       terminationDate = calcReq.terminationDate.getOrElse("(NONE)"),
       includeContributionAndEarnings = true,
-      includeDualCalculation = true
+      includeDualCalculation = calcReq.dualCalc.contains(1)
     )
   }
 }
