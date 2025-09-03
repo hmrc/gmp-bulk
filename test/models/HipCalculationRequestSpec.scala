@@ -35,69 +35,11 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
         surname = "lewis",
         firstForename = "stan",
         memberReference = Some("TET123"),
-        revaluationRate = None, // Maps to "(NONE)"
-        calctype = None, // Maps to "DOL Calculation"
+        revaluationRate = Some(0),
+        calctype = Some(0),
         revaluationDate = Some("2022-06-01"),
         terminationDate = Some("2022-06-30"),
-        memberIsInScheme = Some(true), // Maps to true
-        dualCalc = Some(1)
-      )
-      val hipRequest = HipCalculationRequest.from(calcReq)
-
-      hipRequest.schemeContractedOutNumber must be ("S1234567T")
-      hipRequest.nationalInsuranceNumber must be ("AA123456A")
-      hipRequest.surname must be ("lewis")
-      hipRequest.firstForename must be ("stan")
-      hipRequest.secondForename must be (None)
-      hipRequest.revaluationRate must be (None)
-      hipRequest.calculationRequestType must be (None)
-      hipRequest.revaluationDate must be ("2022-06-01")
-      hipRequest.terminationDate must be ("2022-06-30")
-      hipRequest.includeContributionAndEarnings must be (true)
-      hipRequest.includeDualCalculation must be (true)
-    }
-
-    "correctly transform CalculationRequest int values into HipCalculationRequest String" in{
-      val calcReq = ValidCalculationRequest(
-        scon = "S1234567T",
-        nino = "AA123456A",
-        surname = "lewis",
-        firstForename = "stan",
-        memberReference = Some("TET123"),
-        revaluationRate = None, // Maps to "(NONE)"
-        calctype = Some(0), // Maps to "DOL Calculation"
-        revaluationDate = Some("2022-06-01"),
-        terminationDate = Some("2022-06-30"),
-        memberIsInScheme = Some(true), // Maps to true
-        dualCalc = Some(1)
-      )
-      val hipRequest = HipCalculationRequest.from(calcReq)
-
-      hipRequest.schemeContractedOutNumber must be ("S1234567T")
-      hipRequest.nationalInsuranceNumber must be ("AA123456A")
-      hipRequest.surname must be ("lewis")
-      hipRequest.firstForename must be ("stan")
-      hipRequest.secondForename must be (None)
-      hipRequest.revaluationRate must be (None)
-      hipRequest.calculationRequestType mustBe Some(EnumCalcRequestType.DOL)
-      hipRequest.revaluationDate must be ("2022-06-01")
-      hipRequest.terminationDate must be ("2022-06-30")
-      hipRequest.includeContributionAndEarnings must be (true)
-      hipRequest.includeDualCalculation must be (true)
-    }
-
-    "correctly transform CalculationRequest HMRC as revaluationRate into HipCalculationRequest None value" in{
-      val calcReq = ValidCalculationRequest(
-        scon = "S1234567T",
-        nino = "AA123456A",
-        surname = "lewis",
-        firstForename = "stan",
-        memberReference = Some("TET123"),
-        revaluationRate = Some(0), // Maps to "(NONE)"
-        calctype = None, // Maps to "DOL Calculation"
-        revaluationDate = Some("2022-06-01"),
-        terminationDate = Some("2022-06-30"),
-        memberIsInScheme = Some(true), // Maps to true
+        memberIsInScheme = Some(true),
         dualCalc = Some(1)
       )
       val hipRequest = HipCalculationRequest.from(calcReq)
@@ -108,43 +50,27 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
       hipRequest.firstForename must be ("stan")
       hipRequest.secondForename must be (None)
       hipRequest.revaluationRate mustBe Some(EnumRevaluationRate.NONE)
-      hipRequest.calculationRequestType must be (None)
+      hipRequest.calculationRequestType mustBe Some(EnumCalcRequestType.DOL)
       hipRequest.revaluationDate must be ("2022-06-01")
       hipRequest.terminationDate must be ("2022-06-30")
       hipRequest.includeContributionAndEarnings must be (true)
       hipRequest.includeDualCalculation must be (true)
+
+      val hipRequest2 = HipCalculationRequest.from(calcReq.copy(revaluationRate = Some(1), calctype = Some(1)))
+      hipRequest2.revaluationRate mustBe Some(EnumRevaluationRate.S148)
+      hipRequest2.calculationRequestType mustBe Some(EnumCalcRequestType.Revaluation)
+
+      val hipRequest3 = HipCalculationRequest.from(calcReq.copy(revaluationRate = Some(2), calctype = Some(2)))
+      hipRequest3.revaluationRate mustBe Some(EnumRevaluationRate.FIXED)
+      hipRequest3.calculationRequestType mustBe Some(EnumCalcRequestType.PayableAge)
+
+      val hipRequest4 = HipCalculationRequest.from(calcReq.copy(revaluationRate = Some(3), calctype = Some(3)))
+      hipRequest4.revaluationRate mustBe Some(EnumRevaluationRate.LIMITED)
+      hipRequest4.calculationRequestType mustBe Some(EnumCalcRequestType.Survivor)
+
+      val hipRequest5 = HipCalculationRequest.from(calcReq.copy(calctype = Some(4)))
+      hipRequest5.calculationRequestType mustBe Some(EnumCalcRequestType.SPA)
     }
-
-
-    "correctly transform CalculationRequest missing dates to HipCalculationRequest correctly" in{
-      val calcReq = ValidCalculationRequest(
-        scon = "S1234567T",
-        nino = "AA123456A",
-        surname = "lewis",
-        firstForename = "stan",
-        memberReference = Some("TET123"),
-        revaluationRate = None, // Maps to "(NONE)"
-        calctype = Some(0), // Maps to "DOL Calculation"
-        revaluationDate = None,
-        terminationDate = None,
-        memberIsInScheme = Some(true), // Maps to true
-        dualCalc = Some(1)// Maps to true
-      )
-      val hipRequest = HipCalculationRequest.from(calcReq)
-
-      hipRequest.schemeContractedOutNumber must be ("S1234567T")
-      hipRequest.nationalInsuranceNumber must be ("AA123456A")
-      hipRequest.surname must be ("lewis")
-      hipRequest.firstForename must be ("stan")
-      hipRequest.secondForename must be (None)
-      hipRequest.revaluationRate must be (None)
-      hipRequest.calculationRequestType mustBe Some(EnumCalcRequestType.DOL)
-      hipRequest.revaluationDate must be ("(NONE)")
-      hipRequest.terminationDate must be ("(NONE)")
-      hipRequest.includeContributionAndEarnings must be (true)
-      hipRequest.includeDualCalculation must be (true)
-    }
-
   }
 
   "EnumCalcRequestType" should {
@@ -162,6 +88,11 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
       Json.fromJson[EnumCalcRequestType.Value](JsString("Survivor Calculation")) mustBe JsSuccess(EnumCalcRequestType.Survivor)
       Json.fromJson[EnumCalcRequestType.Value](JsString("SPA Calculation")) mustBe JsSuccess(EnumCalcRequestType.SPA)
     }
+    "fail to deserialize invalid value" in {
+      val json = JsNumber(1)
+      val parsed = json.validate[EnumCalcRequestType.Value]
+      parsed mustBe a[JsError]
+    }
   }
 
   "EnumRevaluationRate" should {
@@ -176,6 +107,11 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
       Json.fromJson[EnumRevaluationRate.Value](JsString("FIXED")) mustBe JsSuccess(EnumRevaluationRate.FIXED)
       Json.fromJson[EnumRevaluationRate.Value](JsString("LIMITED")) mustBe JsSuccess(EnumRevaluationRate.LIMITED)
       Json.fromJson[EnumRevaluationRate.Value](JsString("S148")) mustBe JsSuccess(EnumRevaluationRate.S148)
+    }
+    "fail to deserialize invalid value" in {
+      val json = JsNumber(1)
+      val parsed = json.validate[EnumRevaluationRate.Value]
+      parsed mustBe a[JsError]
     }
   }
 }

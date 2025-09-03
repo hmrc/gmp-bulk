@@ -29,8 +29,8 @@ object EnumRevaluationRate extends Enumeration {
     def writes(enum: EnumRevaluationRate.Value): JsValue = JsString(enum.toString)
 
     def reads(json: JsValue): JsResult[EnumRevaluationRate.Value] = json match {
-      case JsString(str) => JsSuccess(EnumRevaluationRate.withName(str))
-      case _ => JsError("EnumRevaluationRate expected String")
+      case JsString(str) if EnumRevaluationRate.values.exists(_.toString == str) => JsSuccess(EnumRevaluationRate.withName(str))
+      case _ => JsError("Invalid EnumRevaluationRate")
     }
   }
 }
@@ -47,8 +47,8 @@ object EnumCalcRequestType extends Enumeration {
     def writes(enum: EnumCalcRequestType.Value): JsValue = JsString(enum.toString)
 
     def reads(json: JsValue): JsResult[EnumCalcRequestType.Value] = json match {
-      case JsString(str) => JsSuccess(EnumCalcRequestType.withName(str))
-      case _ => JsError("EnumCalcRequestType expected String")
+      case JsString(str) if EnumCalcRequestType.values.exists(_.toString == str) => JsSuccess(EnumCalcRequestType.withName(str))
+      case _ => JsError("Invalid EnumCalcRequestType")
     }
   }
 }
