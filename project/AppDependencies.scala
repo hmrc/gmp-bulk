@@ -3,23 +3,23 @@ import sbt.*
 
 object AppDependencies {
 
-  private val playSuffix = "-play-30"
+  private val playVersion = "-play-30"
   private val bootstrapVersion = "10.1.0"
   private val hmrcMongoVersion = "2.7.0"
   private val pekkoVersion = "1.2.0"
 
   val compile: Seq[ModuleID] = Seq(
     ws,
-    "uk.gov.hmrc.mongo"                          %% s"hmrc-mongo$playSuffix"        % hmrcMongoVersion,
-    "uk.gov.hmrc"                                %% s"bootstrap-backend$playSuffix" % bootstrapVersion,
-    "uk.gov.hmrc"                                %% s"domain$playSuffix"            % "10.0.0",
+    "uk.gov.hmrc.mongo"                          %% s"hmrc-mongo$playVersion"        % hmrcMongoVersion,
+    "uk.gov.hmrc"                                %% s"bootstrap-backend$playVersion" % bootstrapVersion,
+    "uk.gov.hmrc"                                %% s"domain$playVersion"            % "10.0.0",
     "uk.gov.hmrc"                                %% "reactive-circuit-breaker"      % "6.0.0",
     "uk.gov.hmrc"                                %% "tax-year"                      % "5.0.0"
   )
 
   val test: Seq[ModuleID] = Seq(
-    "uk.gov.hmrc"            %% s"bootstrap-test$playSuffix"  % bootstrapVersion,
-    "uk.gov.hmrc.mongo"      %% s"hmrc-mongo-test$playSuffix" % hmrcMongoVersion,
+    "uk.gov.hmrc"            %% s"bootstrap-test$playVersion"  % bootstrapVersion,
+    "uk.gov.hmrc.mongo"      %% s"hmrc-mongo-test$playVersion" % hmrcMongoVersion,
     "org.scalatestplus.play" %% "scalatestplus-play"          % "7.0.2",
     "org.scalatestplus"      %% "mockito-5-18"                % "3.2.19.0",
     "org.apache.pekko"       %% "pekko-testkit"               % "1.2.0"
