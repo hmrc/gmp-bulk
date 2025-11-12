@@ -18,14 +18,14 @@ package actors
 
 import actors.Throttler.SetTarget
 import org.apache.pekko.actor.{ActorSystem, Props}
-import org.apache.pekko.testkit.*
-import config.ApplicationConfiguration
-import connectors.{DesConnector, IFConnector}
+import org.apache.pekko.testkit._
+import config.{AppConfig, ApplicationConfiguration}
+import connectors.{DesConnector, HipConnector, IFConnector}
 import helpers.RandomNino
 import metrics.ApplicationMetrics
 import models.{ProcessReadyCalculationRequest, ValidCalculationRequest}
 import org.mockito.ArgumentMatchers.{any, anyString}
-import org.mockito.Mockito.*
+import org.mockito.Mockito._
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.scalatest.BeforeAndAfterAll
 import org.scalatestplus.mockito.MockitoSugar
@@ -54,8 +54,9 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
   val desConnector = mock[DesConnector]
   val ifConnector = mock[IFConnector]
   val metrics = mock[ApplicationMetrics]
+  val hipConnector = mock[HipConnector]
   val mockRepository = mock[BulkCalculationMongoRepository]
-
+  val appConfig  = mock[AppConfig]
 
   override def beforeAll(): Unit = {
     when(applicationConfig.bulkProcessingBatchSize).thenReturn(1)
@@ -107,7 +108,7 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
       val throttlerProbe = TestProbe()
       val calculationActorProbe = TestProbe()
 
-      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, ifConnector, metrics) {
+      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, ifConnector,hipConnector,metrics,appConfig ) {
         override lazy val throttler = throttlerProbe.ref
         override lazy val requestActor = calculationActorProbe.ref
         override lazy val repository = mockRepository
@@ -128,7 +129,7 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
       val throttlerProbe = TestProbe()
       val calculationActorProbe = TestProbe()
 
-      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, ifConnector, metrics) {
+      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, ifConnector, hipConnector,metrics,appConfig) {
 
         override lazy val throttler = throttlerProbe.ref
         override lazy val requestActor = calculationActorProbe.ref
