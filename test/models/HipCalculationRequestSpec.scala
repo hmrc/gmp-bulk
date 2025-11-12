@@ -51,8 +51,8 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
       hipRequest.secondForename must be (None)
       hipRequest.revaluationRate must be (None)
       hipRequest.calculationRequestType must be (None)
-      hipRequest.revaluationDate must be ("2022-06-01")
-      hipRequest.terminationDate must be ("2022-06-30")
+      hipRequest.revaluationDate must be (Some("2022-06-01"))
+      hipRequest.terminationDate must be (Some("2022-06-30"))
       hipRequest.includeContributionAndEarnings must be (true)
       hipRequest.includeDualCalculation must be (true)
     }
@@ -80,8 +80,8 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
       hipRequest.secondForename must be (None)
       hipRequest.revaluationRate must be (None)
       hipRequest.calculationRequestType mustBe Some(EnumCalcRequestType.DOL)
-      hipRequest.revaluationDate must be ("2022-06-01")
-      hipRequest.terminationDate must be ("2022-06-30")
+      hipRequest.revaluationDate must be (Some("2022-06-01"))
+      hipRequest.terminationDate must be (Some("2022-06-30"))
       hipRequest.includeContributionAndEarnings must be (true)
       hipRequest.includeDualCalculation must be (true)
     }
@@ -109,8 +109,8 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
       hipRequest.secondForename must be (None)
       hipRequest.revaluationRate mustBe Some(EnumRevaluationRate.NONE)
       hipRequest.calculationRequestType must be (None)
-      hipRequest.revaluationDate must be ("2022-06-01")
-      hipRequest.terminationDate must be ("2022-06-30")
+      hipRequest.revaluationDate must be (Some("2022-06-01"))
+      hipRequest.terminationDate must be (Some("2022-06-30"))
       hipRequest.includeContributionAndEarnings must be (true)
       hipRequest.includeDualCalculation must be (true)
     }
@@ -139,8 +139,8 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
       hipRequest.secondForename must be (None)
       hipRequest.revaluationRate must be (None)
       hipRequest.calculationRequestType mustBe Some(EnumCalcRequestType.DOL)
-      hipRequest.revaluationDate must be ("(NONE)")
-      hipRequest.terminationDate must be ("(NONE)")
+      hipRequest.revaluationDate must be (None)
+      hipRequest.terminationDate must be (None)
       hipRequest.includeContributionAndEarnings must be (true)
       hipRequest.includeDualCalculation must be (true)
     }

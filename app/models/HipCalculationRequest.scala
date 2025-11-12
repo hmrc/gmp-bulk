@@ -62,8 +62,8 @@ case class HipCalculationRequest(schemeContractedOutNumber: String,
                                  secondForename: Option[String],
                                  revaluationRate: Option[EnumRevaluationRate.Value],
                                  calculationRequestType: Option[EnumCalcRequestType.Value],
-                                 revaluationDate: String,
-                                 terminationDate: String,
+                                 revaluationDate: Option[String],
+                                 terminationDate: Option[String],
                                  includeContributionAndEarnings: Boolean,
                                  includeDualCalculation: Boolean)
 
@@ -93,8 +93,8 @@ object HipCalculationRequest {
       secondForename = None,
       revaluationRate = revalEnum,
       calculationRequestType = calcTypeEnum,
-      revaluationDate = calcReq.revaluationDate.getOrElse("(NONE)"),
-      terminationDate = calcReq.terminationDate.getOrElse("(NONE)"),
+      revaluationDate = calcReq.revaluationDate,
+      terminationDate = calcReq.terminationDate,
       includeContributionAndEarnings = true,
       includeDualCalculation = calcReq.dualCalc.contains(1)
     )
