@@ -18,7 +18,7 @@ package config
 
 import actors.{ActorUtils, ProcessingSupervisor}
 import org.apache.pekko.actor.{ActorSystem, Props}
-import connectors.{DesConnector, IFConnector}
+import connectors.{DesConnector, HipConnector, IFConnector}
 
 import javax.inject.{Inject, Singleton}
 import metrics.ApplicationMetrics
@@ -42,11 +42,12 @@ class Scheduler @Inject()(override val applicationLifecycle: DefaultApplicationL
                           bulkCalculationMongoRepository : BulkCalculationMongoRepository,
                           mongoApi : MongoLockRepository, bulkCompletionService : BulkCompletionService,
                           desConnector : DesConnector,
+                          hipConnector: HipConnector,
                           ifConnector: IFConnector,
-                          metrics : ApplicationMetrics
-                         )(implicit val ec : ExecutionContext) extends RunningOfScheduledJobs with ActorUtils {
+                          metrics : ApplicationMetrics,appConfig: AppConfig
+                         )(implicit val ec: ExecutionContext) extends RunningOfScheduledJobs with ActorUtils {
 
-lazy val scheduledJobs: Seq[ScheduledJob] = {
+  lazy val scheduledJobs: Seq[ScheduledJob] = {
     Seq(new ExclusiveScheduledJob {
       lazy val processingSupervisor = actorSystem.actorOf(Props(
         classOf[ProcessingSupervisor],
@@ -55,7 +56,8 @@ lazy val scheduledJobs: Seq[ScheduledJob] = {
         mongoApi,
         desConnector,
         ifConnector,
-        metrics
+        hipConnector,
+        metrics,appConfig
       ), "processing-supervisor")
 
       override def name: String = "BulkProcesssingService"

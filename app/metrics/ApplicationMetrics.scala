@@ -50,6 +50,15 @@ class ApplicationMetrics @Inject()(registry: MetricRegistry) extends Logging {
     ("if-connector-httpstatus-500", counter),
     ("if-connector-httpstatus-504", counter),
     ("if-connector-timer", timer),
+    ("hip-connector-requests-successful", counter),
+    ("hip-connector-requests-failed", counter),
+    ("hip-connector-httpstatus-200", counter),
+    ("hip-connector-httpstatus-400", counter),
+    ("hip-connector-httpstatus-404", counter),
+    ("hip-connector-httpstatus-422", counter),
+    ("hip-connector-httpstatus-500", counter),
+    ("hip-connector-httpstatus-504", counter),
+    ("hip-connector-timer", timer),
     ("mongo-insertResponseByReference-timer", timer),
     ("mongo-findRequestsToProcess-timer", timer),
     ("mongo-findCountRemaining-timer", timer),
@@ -80,15 +89,19 @@ class ApplicationMetrics @Inject()(registry: MetricRegistry) extends Logging {
 
   def registerSuccessfulRequest() = metricCounter("des-connector-requests-successful")
   def ifRegisterSuccessfulRequest() = metricCounter("des-connector-requests-successful")
+  def hipRegisterSuccessfulRequest() = metricCounter("hip-connector-requests-successful")
 
   def registerFailedRequest() = metricCounter("des-connector-requests-failed")
   def ifRegisterFailedRequest() = metricCounter("des-connector-requests-failed")
+  def hipRegisterFailedRequest() = metricCounter("hip-connector-requests-failed")
 
   def registerStatusCode(code: String) = metricCounter(s"des-connector-httpstatus-$code")
   def ifRegisterStatusCode(code: String) = metricCounter(s"des-connector-httpstatus-$code")
+  def hipRegisterStatusCode(code: String) = metricCounter(s"hip-connector-httpstatus-$code")
 
   def desConnectionTime(diff: Long, timeUnit: TimeUnit) = metricTimer(diff, timeUnit, "des-connector-timer")
   def ifConnectionTime(diff: Long, timeUnit: TimeUnit) = metricTimer(diff, timeUnit, "des-connector-timer")
+  def hipConnectionTime(diff: Long, timeUnit: TimeUnit) = metricTimer(diff, timeUnit, "hip-connector-timer")
 
   def insertResponseByReferenceTimer(diff: Long, unit: duration.TimeUnit): Unit =
     metricTimer(diff, unit, "mongo-insertResponseByReference-timer")

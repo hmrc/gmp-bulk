@@ -18,8 +18,8 @@ package actors
 
 import actors.Throttler.{RateInt, SetTarget}
 import org.apache.pekko.actor._
-import config.ApplicationConfiguration
-import connectors.{DesConnector, IFConnector}
+import config.{AppConfig, ApplicationConfiguration}
+import connectors.{DesConnector, HipConnector, IFConnector}
 import metrics.ApplicationMetrics
 import play.api.Logging
 import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
@@ -37,7 +37,8 @@ class ProcessingSupervisor (applicationConfig: ApplicationConfiguration,
                                      val mongoLockRepository: MongoLockRepository,
                                      desConnector : DesConnector,
                                      ifConnector: IFConnector,
-                                     metrics : ApplicationMetrics)
+                                     hipConnector: HipConnector,
+                                     metrics : ApplicationMetrics, appConfig: AppConfig)
   extends Actor with ActorUtils with TimePeriodLockService with Logging {
 
   override val lockRepository: LockRepository = mongoLockRepository
@@ -51,8 +52,11 @@ class ProcessingSupervisor (applicationConfig: ApplicationConfiguration,
     bulkCalculationMongoRepository,
     desConnector,
     ifConnector,
+    hipConnector,
     metrics,
-    applicationConfig
+    applicationConfig,
+    appConfig,
+    context.dispatcher
   ), "calculation-requester")
 
   lazy val throttler: ActorRef = context.actorOf(Props(classOf[TimerBasedThrottler],
@@ -95,7 +99,7 @@ class ProcessingSupervisor (applicationConfig: ApplicationConfiguration,
         }
     }
   }
-  
+
   def receiveWhenProcessRunning: Receive = {
     // $COVERAGE-OFF$
     case START =>

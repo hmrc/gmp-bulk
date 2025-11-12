@@ -35,7 +35,12 @@ gmp.error.line.empty = No information submitted
 400.what = Contact HMRC through Shared Workspace
 423.reason = No online calculation possible
 423.what = Contact HMRC through Shared Workspace
-
+403.reason = No online calculation possible
+403.what = Contact HMRC through Shared Workspace
+500.reason = No online calculation possible
+500.what = Contact HMRC through Shared Workspace
+503.reason = No online calculation possible
+503.what = Contact HMRC through Shared Workspace
 48160.reason = No online calculation possible
 48160.what = Contact HMRC through Shared Workspace
 56012.reason = No online calculation possible
