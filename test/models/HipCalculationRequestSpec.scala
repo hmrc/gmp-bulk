@@ -20,6 +20,7 @@ import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 
 import java.time.format.DateTimeFormatter
+import java.time.LocalDate
 import play.api.libs.json.{JsError, JsNumber, JsString, JsSuccess, Json}
 
 
@@ -51,8 +52,8 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
       hipRequest.secondForename must be (None)
       hipRequest.revaluationRate must be (None)
       hipRequest.calculationRequestType must be (None)
-      hipRequest.revaluationDate must be (Some("2022-06-01"))
-      hipRequest.terminationDate must be (Some("2022-06-30"))
+      hipRequest.revaluationDate must be (Some(LocalDate.parse("2022-06-01")))
+      hipRequest.terminationDate must be (Some(LocalDate.parse("2022-06-30")))
       hipRequest.includeContributionAndEarnings must be (true)
       hipRequest.includeDualCalculation must be (true)
     }
@@ -80,8 +81,8 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
       hipRequest.secondForename must be (None)
       hipRequest.revaluationRate must be (None)
       hipRequest.calculationRequestType mustBe Some(EnumCalcRequestType.DOL)
-      hipRequest.revaluationDate must be (Some("2022-06-01"))
-      hipRequest.terminationDate must be (Some("2022-06-30"))
+      hipRequest.revaluationDate must be (Some(LocalDate.parse("2022-06-01")))
+      hipRequest.terminationDate must be (Some(LocalDate.parse("2022-06-30")))
       hipRequest.includeContributionAndEarnings must be (true)
       hipRequest.includeDualCalculation must be (true)
     }
@@ -109,8 +110,8 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
       hipRequest.secondForename must be (None)
       hipRequest.revaluationRate mustBe Some(EnumRevaluationRate.NONE)
       hipRequest.calculationRequestType must be (None)
-      hipRequest.revaluationDate must be (Some("2022-06-01"))
-      hipRequest.terminationDate must be (Some("2022-06-30"))
+      hipRequest.revaluationDate must be (Some(LocalDate.parse("2022-06-01")))
+      hipRequest.terminationDate must be (Some(LocalDate.parse("2022-06-30")))
       hipRequest.includeContributionAndEarnings must be (true)
       hipRequest.includeDualCalculation must be (true)
     }
