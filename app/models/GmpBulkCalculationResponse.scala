@@ -43,6 +43,7 @@ object ContributionsAndEarnings {
       case x if x < contributionsAndEarningsBefore1987 => f"${details.contributionOrEarningsAmount}%1.2f"
       case _ => {
         val formatter = java.text.NumberFormat.getIntegerInstance
+        formatter.setGroupingUsed(false)
         formatter.format(details.contributionOrEarningsAmount)
       }
     })
