@@ -19,9 +19,10 @@ package utils
 
 object HipErrorCodeMapper {
 
-  private final val DefaultErrorCode = 0
+  private final val DefaultErrorCode = 1
 
   private final val gmpErrorCodeMap: Map[String, Int] = Map(
+    "No errors have occurred during the calculation" -> 0,
     "Input revaluation date is before the termination date held on hmrc records" -> 63123,
     "Single period scheme membership does not correspond to details held" -> 56023,
     "Scheme details do not correspond to those held" -> 56068,
