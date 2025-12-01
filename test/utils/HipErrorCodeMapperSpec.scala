@@ -25,6 +25,7 @@ class HipErrorCodeMapperSpec extends PlaySpec with GuiceOneAppPerSuite {
 
   "HipErrorCodeMapper.mapGmpErrorCode" should {
     "return correct int for known GMP error code" in {
+      HipErrorCodeMapper.mapGmpErrorCode("No errors have occurred during the calculation") mustBe 0
       HipErrorCodeMapper.mapGmpErrorCode("Input revaluation date is before the termination date held on hmrc records") mustBe 63123
       HipErrorCodeMapper.mapGmpErrorCode("Single period scheme membership does not correspond to details held") mustBe 56023
       HipErrorCodeMapper.mapGmpErrorCode("Scheme details do not correspond to those held") mustBe 56068
@@ -56,14 +57,14 @@ class HipErrorCodeMapperSpec extends PlaySpec with GuiceOneAppPerSuite {
 
     }
 
-    "return 0 for unknown GMP error code" in {
-      HipErrorCodeMapper.mapGmpErrorCode("Unknown error code") mustBe 0
+    "return 1 for unknown GMP error code" in {
+      HipErrorCodeMapper.mapGmpErrorCode("Unknown error code") mustBe 1
     }
-    "return 0 for empty string" in {
-      HipErrorCodeMapper.mapGmpErrorCode("") mustBe 0
+    "return 1 for empty string" in {
+      HipErrorCodeMapper.mapGmpErrorCode("") mustBe 1
     }
-    "return 0 for null" in {
-      HipErrorCodeMapper.mapGmpErrorCode(null) mustBe 0
+    "return 1 for null" in {
+      HipErrorCodeMapper.mapGmpErrorCode(null) mustBe 1
 
     }
   }
