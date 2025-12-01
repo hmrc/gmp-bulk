@@ -56,14 +56,14 @@ class HipErrorCodeMapperSpec extends PlaySpec with GuiceOneAppPerSuite {
 
     }
 
-    "return 0 for unknown GMP error code" in {
-      HipErrorCodeMapper.mapGmpErrorCode("Unknown error code") mustBe 0
+    "return 1 for unknown GMP error code" in {
+      HipErrorCodeMapper.mapGmpErrorCode("Unknown error code") mustBe 1
     }
-    "return 0 for empty string" in {
-      HipErrorCodeMapper.mapGmpErrorCode("") mustBe 0
+    "return 1 for empty string" in {
+      HipErrorCodeMapper.mapGmpErrorCode("") mustBe 1
     }
-    "return 0 for null" in {
-      HipErrorCodeMapper.mapGmpErrorCode(null) mustBe 0
+    "return 1 for null" in {
+      HipErrorCodeMapper.mapGmpErrorCode(null) mustBe 1
 
     }
   }
