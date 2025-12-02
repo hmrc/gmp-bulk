@@ -39,7 +39,7 @@ class HipErrorCodeMapperSpec extends PlaySpec with GuiceOneAppPerSuite {
       HipErrorCodeMapper.mapGmpErrorCode("reduced rate election - cannot process") mustBe 56018
       HipErrorCodeMapper.mapGmpErrorCode("Scheme clerically terminated - cannot process") mustBe 56019
       HipErrorCodeMapper.mapGmpErrorCode("Termination date overlaps with a subsequent scheme") mustBe 56020
-      HipErrorCodeMapper.mapGmpErrorCode("More than one scheme with the same ECON – no control earnings") mustBe 56021
+      HipErrorCodeMapper.mapGmpErrorCode("More than one scheme with the same ECON - no control earnings") mustBe 56021
       HipErrorCodeMapper.mapGmpErrorCode("Benefit Scheme details not provided") mustBe 56070
       HipErrorCodeMapper.mapGmpErrorCode("Scheme membership start date invalid") mustBe 48095
       HipErrorCodeMapper.mapGmpErrorCode("End date of the input scheme membership does not correspond to the end date of the matched scheme membership") mustBe 58108

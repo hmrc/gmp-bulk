@@ -36,7 +36,7 @@ object HipErrorCodeMapper {
     "reduced rate election - cannot process" -> 56018,
     "Scheme clerically terminated - cannot process" -> 56019,
     "Termination date overlaps with a subsequent scheme" -> 56020,
-    "More than one scheme with the same ECON – no control earnings" -> 56021,
+    "More than one scheme with the same ECON - no control earnings" -> 56021,
     "Benefit Scheme details not provided" -> 56070,
     "Scheme membership start date invalid" -> 48095,
     "End date of the input scheme membership does not correspond to the end date of the matched scheme membership" -> 58108,
