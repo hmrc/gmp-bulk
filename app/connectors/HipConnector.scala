@@ -23,7 +23,6 @@ import com.google.inject.{Inject, Singleton}
 import config.{AppConfig, ApplicationConfiguration, Constants}
 import metrics.ApplicationMetrics
 import models.{HipCalculationFailuresResponse, HipCalculationRequest, HipCalculationResponse}
-
 import play.api.Logging
 import play.api.http.Status
 import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_FOUND, OK, TOO_MANY_REQUESTS}
@@ -33,12 +32,13 @@ import uk.gov.hmrc.circuitbreaker.{CircuitBreakerConfig, UsingCircuitBreaker}
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.{BadGatewayException, GatewayTimeoutException, HeaderCarrier, HttpReads, HttpResponse, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.http.client.HttpClientV2
-import uk.gov.hmrc.play.audit.AuditExtensions._
+import uk.gov.hmrc.play.audit.AuditExtensions.*
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.audit.model.{DataEvent, EventTypes}
 import utils.LoggingUtils
 
 import java.time.format.DateTimeFormatter
+import scala.annotation.nowarn
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
@@ -52,7 +52,7 @@ class HipConnector @Inject()(
 
   private val hipBaseUrl: String = appConfig.hipUrl
   private val calcURI = s"$hipBaseUrl/ni/gmp/calculation"
-  private val MaxBodyLengthForLogging = 300
+  @nowarn private val MaxBodyLengthForLogging = 300
   class BreakerException extends Exception
 
   private def buildHeadersV1: Seq[(String, String)] =

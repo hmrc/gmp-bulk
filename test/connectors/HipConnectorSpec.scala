@@ -22,7 +22,6 @@ import models.{EnumCalcRequestType, EnumRevaluationRate, HipCalculationRequest, 
 import org.mockito.Mockito.when
 import org.scalatest.{BeforeAndAfter, RecoverMethods}
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
-import play.api.http.Status.INTERNAL_SERVER_ERROR
 import play.api.libs.json.Json
 import play.api.test.Helpers.{BAD_REQUEST, FORBIDDEN, NOT_FOUND, OK}
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, UpstreamErrorResponse}
