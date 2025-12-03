@@ -18,7 +18,7 @@ lazy val plugins : Seq[Plugins] = Seq(
 )
 
 lazy val microservice = Project(appName, file("."))
-  .enablePlugins(plugins : _*)
+  .enablePlugins(plugins *)
   .settings(headerLicense := {Some(HeaderLicense.ALv2(LocalDate.now().getYear.toString, "HM Revenue & Customs"))})
   .enablePlugins(SbtDistributablesPlugin)
   .disablePlugins(sbt.plugins.JUnitXmlReportPlugin)
@@ -35,7 +35,7 @@ lazy val microservice = Project(appName, file("."))
     routesGenerator := InjectedRoutesGenerator,
     resolvers += Resolver.typesafeRepo("releases")
   )
-  .settings(scalaVersion := "3.7.1")
+  .settings(scalaVersion := "3.7.4")
   .settings(
     scalacOptions ++= List(
       "-explaintypes",
