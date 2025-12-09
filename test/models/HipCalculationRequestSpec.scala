@@ -207,8 +207,52 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
       HipCalculationRequest.from(base.copy(dualCalc = Some(0))).includeDualCalculation mustBe false
       HipCalculationRequest.from(base.copy(dualCalc = None)).includeDualCalculation mustBe false
     }
+    "normalise surname, firstForename and NINO with spaces and special characters" in {
+      val calcReq = ValidCalculationRequest(
+        scon = "S1234567T",
+        nino = "AA123456A",
+        surname = " o'neill",
+        firstForename = " ann-marie",
+        memberReference = Some("TET123"),
+        calctype = Some(0),
+        revaluationDate = Some("2022-06-01"),
+        revaluationRate = None,
+        dualCalc = Some(0),
+        terminationDate = Some("2022-06-30"),
+        memberIsInScheme = Some(true)
+      )
+
+      val hipRequest = HipCalculationRequest.from(calcReq)
+
+      hipRequest.nationalInsuranceNumber must be("AA123456A")
+      hipRequest.surname must be("O'")
+      hipRequest.firstForename must be("A")
+    }
+
+    "normalise surname and firstForename without spaces" in {
+      val calcReq = ValidCalculationRequest(
+        scon = "S1234567T",
+        nino = "aa123456a",
+        surname = "O'Neill",
+        firstForename = "Ann-Marie",
+        memberReference = Some("TET123"),
+        calctype = None,
+        revaluationDate = None,
+        revaluationRate = None,
+        dualCalc = Some(1),
+        terminationDate = None,
+        memberIsInScheme = Some(true)
+      )
+
+      val hipRequest = HipCalculationRequest.from(calcReq)
+
+      hipRequest.nationalInsuranceNumber must be("AA123456A")
+      hipRequest.surname must be("O'N")
+      hipRequest.firstForename must be("A")
+    }
 
   }
+  
 
   "EnumCalcRequestType" should {
     "serialize to JSON correctly" in {
