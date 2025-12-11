@@ -44,10 +44,8 @@ import org.mockito.Mockito._
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
 import org.scalatestplus.mockito.MockitoSugar
-import play.api.test.Helpers
 import repositories.BulkCalculationMongoRepository
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
@@ -320,7 +318,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
       "insert a failed response when a 500 code is returned from IF" in {
         val exObj = UpstreamErrorResponse("Call to Individual Pension calculation on NPS Service failed with status code 500", 500, 500)
 
-        when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())) thenReturn Future.successful(DesGetSuccessResponse)
+        when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())).thenReturn(Future.successful(DesGetSuccessResponse))
         when(mockAppConfig.isIfsEnabled).thenReturn(true)
         when(mockIFConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(exObj))
         when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
@@ -338,7 +336,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
       "insert a failed response when a 503 code is returned from IF" in {
         val exObj = UpstreamErrorResponse("Service Unavailable", 503, 503)
 
-        when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())) thenReturn Future.successful(DesGetSuccessResponse)
+        when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())).thenReturn(Future.successful(DesGetSuccessResponse))
         when(mockAppConfig.isIfsEnabled).thenReturn(true)
         when(mockIFConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(exObj))
         when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
@@ -354,7 +352,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
       "return a failure when a 500 code is returned from IF" in {
         val exObj = UpstreamErrorResponse("Internal Server Error", 500, 500)
 
-        when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())) thenReturn Future.successful(DesGetSuccessResponse)
+        when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())).thenReturn(Future.successful(DesGetSuccessResponse))
         when(mockAppConfig.isIfsEnabled).thenReturn(true)
         when(mockIFConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(exObj))
         when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
@@ -370,7 +368,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
       "return a failure for other error codes from IF" in {
         val exObj = UpstreamErrorResponse("Not Found", 404, 404)
 
-        when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())) thenReturn Future.successful(DesGetSuccessResponse)
+        when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())).thenReturn(Future.successful(DesGetSuccessResponse))
         when(mockAppConfig.isIfsEnabled).thenReturn(true)
         when(mockIFConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(exObj))
 
@@ -459,7 +457,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         "insert a failed response when a 500 code is returned from DES" in {
           val exObj = UpstreamErrorResponse("Call to Individual Pension calculation on NPS Service failed with status code 500", 500, 500)
 
-          when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())) thenReturn Future.successful(DesGetSuccessResponse)
+          when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())).thenReturn(Future.successful(DesGetSuccessResponse))
           when(mockAppConfig.isIfsEnabled).thenReturn(false)
           when(mockDesConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(exObj))
           when(mockRepository.insertResponseByReference(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(Future.successful(true))
@@ -475,7 +473,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         "return a failure for 500 from DES" in {
           val exObj = UpstreamErrorResponse("Internal Server Error", 500, 500)
 
-          when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())) thenReturn Future.successful(DesGetSuccessResponse)
+          when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())).thenReturn(Future.successful(DesGetSuccessResponse))
           when(mockAppConfig.isIfsEnabled).thenReturn(false)
           when(mockDesConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(exObj))
 
@@ -490,7 +488,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         "return a failure for 503 from DES" in {
           val exObj = UpstreamErrorResponse("Service Unavailable", 503, 503)
 
-          when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())) thenReturn Future.successful(DesGetSuccessResponse)
+          when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())).thenReturn(Future.successful(DesGetSuccessResponse))
           when(mockAppConfig.isIfsEnabled).thenReturn(false)
           when(mockDesConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(exObj))
 
@@ -505,7 +503,7 @@ class CalculationRequestActorSpec extends TestKit(ActorSystem("TestCalculationAc
         "return a failure for other error codes from DES" in {
           val exObj = UpstreamErrorResponse("Not Found", 404, 404)
 
-          when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())) thenReturn Future.successful(DesGetSuccessResponse)
+          when(mockDesConnector.getPersonDetails(ArgumentMatchers.any())).thenReturn(Future.successful(DesGetSuccessResponse))
           when(mockAppConfig.isIfsEnabled).thenReturn(false)
           when(mockDesConnector.calculate(ArgumentMatchers.any())).thenReturn(Future.failed(exObj))
 

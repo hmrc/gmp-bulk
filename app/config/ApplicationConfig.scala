@@ -24,6 +24,7 @@ import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import java.math.RoundingMode
 import java.util.Base64
+import scala.annotation.nowarn
 
 trait ApplicationConfig {
   val bulkProcessingBatchSize: Int
@@ -49,7 +50,7 @@ class ApplicationConfiguration@Inject()(configuration: Configuration) extends Ap
 }
 @Singleton
 class AppConfig @Inject()(implicit
-                          configuration: Configuration,
+                          @nowarn configuration: Configuration,
                           servicesConfig: ServicesConfig,
                           val featureSwitches: FeatureSwitches
                          ) {

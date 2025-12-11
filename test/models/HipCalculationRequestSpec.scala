@@ -21,12 +21,14 @@ import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
-import play.api.libs.json.{JsError, JsNumber, JsString, JsSuccess, Json}
+import play.api.libs.json.{JsString, JsSuccess, Json}
+
+import scala.annotation.nowarn
 
 
 class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite{
 
-  private val fullDateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+  @nowarn private val fullDateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
   "HipCalculationRequest.from" should {
     "correctly transform CalculationRequest into HipCalculationRequest" in{
