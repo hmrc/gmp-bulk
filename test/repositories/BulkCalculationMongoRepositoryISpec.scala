@@ -26,18 +26,18 @@ import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, MongoSupport}
 import org.mongodb.scala.*
-import uk.gov.hmrc.mongo.MongoComponent
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 import metrics.ApplicationMetrics
 import connectors.{EmailConnector, ProcessedUploadTemplate}
-import uk.gov.hmrc.play.audit.http.connector.{AuditConnector, AuditResult}
+import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
 import uk.gov.hmrc.http.HeaderCarrier
 import models.*
 
 import java.time.LocalDateTime
+import scala.annotation.nowarn
 
 class BulkCalculationMongoRepositoryISpec
   extends AnyWordSpec
@@ -210,7 +210,7 @@ class BulkCalculationMongoRepositoryISpec
         .thenReturn(scala.concurrent.Future.successful(true))
 
       // Now run completion
-      implicit val hc: HeaderCarrier = HeaderCarrier()
+      @nowarn implicit val hc: HeaderCarrier = HeaderCarrier()
       repo.findAndComplete().futureValue mustBe true
 
       // Summary should be present and totals computed
