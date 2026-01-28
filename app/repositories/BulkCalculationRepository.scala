@@ -67,15 +67,24 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
           .background(true)
         ),
         IndexModel(Indexes.ascending("bulkId"), IndexOptions().name("bulkId").background(true)),
-        IndexModel(Indexes.ascending("uploadReference"), IndexOptions().name("UploadReference").sparse(true).unique(true)),
+        IndexModel(Indexes.ascending("uploadReference"), IndexOptions().name("UploadReference").sparse(true)),
         IndexModel(Indexes.ascending("bulkId", "lineId"), IndexOptions().name("BulkAndLine")),
         IndexModel(Indexes.ascending("userId"), IndexOptions().name("UserId").background(true)),
         IndexModel(Indexes.descending("lineId"), IndexOptions().name("LineIdDesc").background(true)),
         IndexModel(Indexes.ascending("isParent"), IndexOptions().name("isParent")),
         IndexModel(Indexes.ascending("isParent","complete"), IndexOptions().name("isParentAndComplete")),
         IndexModel(Indexes.ascending("isChild", "hasValidRequest", "hasResponse", "hasValidationErrors"), IndexOptions().name("childQuery")),
-        IndexModel(Indexes.ascending("isChild", "bulkId"), IndexOptions().name("childBulkIndex"))
-      )
+        IndexModel(Indexes.ascending("isChild", "bulkId"), IndexOptions().name("childBulkIndex")),
+        IndexModel(
+          Indexes.compoundIndex(
+            Indexes.ascending("isChild"),
+            Indexes.ascending("createdAt"),
+          ),
+          IndexOptions()
+            .name("isChildCreatedAtIndex")
+        )
+      ),
+      replaceIndexes = true
     ) with BulkCalculationRepository with Logging {
 
   override val auditConnector: AuditConnector = ac
