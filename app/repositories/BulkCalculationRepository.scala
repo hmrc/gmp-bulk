@@ -68,7 +68,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
           .background(true)
         ),
         IndexModel(Indexes.ascending("bulkId"), IndexOptions().name("bulkId").background(true)),
-        IndexModel(Indexes.ascending("uploadReference"), IndexOptions().name("UploadReference").sparse(true)),
+        IndexModel(Indexes.ascending("uploadReference"), IndexOptions().name("UploadReference").sparse(true).unique(true)),
         IndexModel(Indexes.ascending("bulkId", "lineId"), IndexOptions().name("BulkAndLine")),
         IndexModel(Indexes.ascending("userId"), IndexOptions().name("UserId").background(true)),
         IndexModel(Indexes.descending("lineId"), IndexOptions().name("LineIdDesc").background(true)),
