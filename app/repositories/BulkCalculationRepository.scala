@@ -79,7 +79,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
         IndexModel(
           Indexes.compoundIndex(
             Indexes.ascending("isChild"),
-            Indexes.ascending("createdAt"),
+            Indexes.ascending("createdAt")
           ),
           IndexOptions()
             .name("isChildCreatedAtIndex")
