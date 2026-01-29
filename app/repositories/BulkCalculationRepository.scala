@@ -59,6 +59,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
       collectionName = "bulk-calculation",
       mongoComponent = mongo,
       domainFormat = BulkCalculationRequest.formats,
+      replaceIndexes = true,
       indexes = Seq(
         IndexModel(Indexes.ascending("createdAt"), IndexOptions()
           .name("bulkCalculationRequestExpiry")
@@ -83,8 +84,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
           IndexOptions()
             .name("isChildCreatedAtIndex")
         )
-      ),
-      replaceIndexes = true
+      )
     ) with BulkCalculationRepository with Logging {
 
   override val auditConnector: AuditConnector = ac
