@@ -25,10 +25,14 @@ import uk.gov.hmrc.http.client.HttpClientV2
 class Module(environment: Environment, configuration: Configuration) extends AbstractModule {
 
   override def configure(): Unit = {
+    val startJobEnabled: Boolean = configuration.getOptional[Boolean]("start-job-enabled").getOrElse(false)
+
     bind(classOf[HttpClientV2]).toProvider(classOf[HttpClientV2Provider])
     bind(classOf[BulkCalculationMongoRepository]).toProvider(classOf[BulkCalculationMongoRepositoryProvider])
     bind(classOf[Scheduler]).asEagerSingleton()
-    bind(classOf[AppStartupJobs]).to(classOf[AppStartupJobsImpl]).asEagerSingleton()
+    if(startJobEnabled){
+      bind(classOf[AppStartupJobs]).to(classOf[AppStartupJobsImpl]).asEagerSingleton()
+    }
   }
 
 }
