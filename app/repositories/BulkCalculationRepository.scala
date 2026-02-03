@@ -59,7 +59,6 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
       collectionName = "bulk-calculation",
       mongoComponent = mongo,
       domainFormat = BulkCalculationRequest.formats,
-      replaceIndexes = true,
       indexes = Seq(
         IndexModel(Indexes.ascending("createdAt"), IndexOptions()
           .name("bulkCalculationRequestExpiry")
@@ -75,15 +74,7 @@ class BulkCalculationMongoRepository @Inject()(override val metrics: Application
         IndexModel(Indexes.ascending("isParent"), IndexOptions().name("isParent")),
         IndexModel(Indexes.ascending("isParent","complete"), IndexOptions().name("isParentAndComplete")),
         IndexModel(Indexes.ascending("isChild", "hasValidRequest", "hasResponse", "hasValidationErrors"), IndexOptions().name("childQuery")),
-        IndexModel(Indexes.ascending("isChild", "bulkId"), IndexOptions().name("childBulkIndex")),
-        IndexModel(
-          Indexes.compoundIndex(
-            Indexes.ascending("isChild"),
-            Indexes.ascending("createdAt")
-          ),
-          IndexOptions()
-            .name("isChildCreatedAtIndex")
-        )
+        IndexModel(Indexes.ascending("isChild", "bulkId"), IndexOptions().name("childBulkIndex"))
       )
     ) with BulkCalculationRepository with Logging {
 
