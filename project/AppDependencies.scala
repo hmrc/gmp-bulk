@@ -50,7 +50,11 @@ object AppDependencies {
     "org.apache.pekko" %% "pekko-testkit"
   ).map(_ % pekkoVersion)
 
-  val lz4Overrides: Seq[ModuleID] = Seq("org.lz4" % "lz4-java" % "1.8.1")
+
+  val excludedDependencies: Seq[ExclusionRule] = Seq(
+    ExclusionRule("org.lz4", "lz4-java")
+  )
+
   val all: Seq[ModuleID] = compile ++ jacksonOverrides ++ pekkoOverrides ++ test
 
 }

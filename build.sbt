@@ -28,7 +28,7 @@ lazy val microservice = Project(appName, file("."))
     defaultSettings(),
     routesImport += "extensions.Binders._",
     libraryDependencies ++= AppDependencies.all,
-    dependencyOverrides ++= AppDependencies.lz4Overrides,
+    excludeDependencies ++= AppDependencies.excludedDependencies,
     Test / parallelExecution := false,
     Test / fork := false,
     retrieveManaged := true,
