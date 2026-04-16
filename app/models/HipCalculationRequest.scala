@@ -21,8 +21,6 @@ import java.time.LocalDate
 import play.api.libs.json.Reads.localDateReads
  
 
-import java.net.URLEncoder
-
 object EnumRevaluationRate extends Enumeration {
   type EnumRevaluationRate = Value
   val NONE = Value("(NONE)")

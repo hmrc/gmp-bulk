@@ -6,7 +6,7 @@ object AppDependencies {
   private val playVersion = "-play-30"
   private val bootstrapVersion = "10.7.0"
   private val hmrcMongoVersion = "2.12.0"
-  private val pekkoVersion = "1.2.0"
+  private val pekkoVersion = "1.3.0"
 
   val compile: Seq[ModuleID] = Seq(
     ws,
@@ -49,6 +49,11 @@ object AppDependencies {
     "org.apache.pekko" %% "pekko-protobuf-v3",
     "org.apache.pekko" %% "pekko-testkit"
   ).map(_ % pekkoVersion)
+
+
+  val excludedDependencies: Seq[ExclusionRule] = Seq(
+    ExclusionRule("org.lz4", "lz4-java")
+  )
 
   val all: Seq[ModuleID] = compile ++ jacksonOverrides ++ pekkoOverrides ++ test
 
