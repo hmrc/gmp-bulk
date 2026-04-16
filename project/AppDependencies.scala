@@ -6,7 +6,7 @@ object AppDependencies {
   private val playVersion = "-play-30"
   private val bootstrapVersion = "10.7.0"
   private val hmrcMongoVersion = "2.12.0"
-  private val pekkoVersion = "1.2.0"
+  private val pekkoVersion = "1.3.0"
 
   val compile: Seq[ModuleID] = Seq(
     ws,
@@ -14,7 +14,7 @@ object AppDependencies {
     "uk.gov.hmrc"                                %% s"bootstrap-backend$playVersion" % bootstrapVersion,
     "uk.gov.hmrc"                                %% s"domain$playVersion"            % "13.0.0",
     "uk.gov.hmrc"                                %% "reactive-circuit-breaker"      % "6.1.0",
-    "uk.gov.hmrc"                                %% "tax-year"                      % "6.0.0"
+    "uk.gov.hmrc"                                %% "tax-year"                      % "6.0.0",
   )
 
   val test: Seq[ModuleID] = Seq(
@@ -50,6 +50,7 @@ object AppDependencies {
     "org.apache.pekko" %% "pekko-testkit"
   ).map(_ % pekkoVersion)
 
+  val lz4Overrides: Seq[ModuleID] = Seq("org.lz4" % "lz4-java" % "1.8.1")
   val all: Seq[ModuleID] = compile ++ jacksonOverrides ++ pekkoOverrides ++ test
 
 }
