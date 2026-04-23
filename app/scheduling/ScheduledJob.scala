@@ -22,8 +22,8 @@ import scala.concurrent.duration.FiniteDuration
 trait ScheduledJob {
   def name: String
   def execute(implicit ec: ExecutionContext): Future[Result]
-  def runningFuture: Option[Future[Result]] = None
-  
+  def isRunning: Future[Boolean]
+
   case class Result(message: String)
 
   def configKey: String = name
