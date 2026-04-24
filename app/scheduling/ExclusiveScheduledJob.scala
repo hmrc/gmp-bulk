@@ -28,14 +28,25 @@ trait ExclusiveScheduledJob extends ScheduledJob {
   final def execute(implicit ec: ExecutionContext): Future[Result] =
     if (mutex.tryAcquire()) {
       Try(executeInMutex) match {
-        case Success(f) => f andThen { case _ => mutex.release() }
-        case Failure(e) => Future.successful(mutex.release()).flatMap(_ => Future.failed(e))
+        case Success(f) =>
+          val execution = f andThen { case _ =>
+            mutex.release()
+            currentExecution = None
+          }
+          currentExecution = Some(execution)
+          execution
+        case Failure(e) =>
+          currentExecution = None
+          mutex.release()
+          Future.failed(e)
       }
     } else {
       Future.successful(Result("Skipping execution: job running"))
     }
+    
+  @volatile private var currentExecution: Option[Future[Result]] = None
 
-  def isRunning: Future[Boolean] = Future.successful(mutex.availablePermits() == 0)
+  override def runningFuture: Option[Future[Result]] = currentExecution
 
   final private val mutex = new Semaphore(1)
 }
