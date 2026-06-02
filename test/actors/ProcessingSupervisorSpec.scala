@@ -18,14 +18,14 @@ package actors
 
 import actors.Throttler.SetTarget
 import org.apache.pekko.actor.{ActorSystem, Props}
-import org.apache.pekko.testkit._
+import org.apache.pekko.testkit.*
 import config.{AppConfig, ApplicationConfiguration}
 import connectors.{DesConnector, HipConnector, IFConnector}
 import helpers.RandomNino
 import metrics.ApplicationMetrics
 import models.{ProcessReadyCalculationRequest, ValidCalculationRequest}
 import org.mockito.ArgumentMatchers.{any, anyString}
-import org.mockito.Mockito._
+import org.mockito.Mockito.*
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.scalatest.BeforeAndAfterAll
 import org.scalatestplus.mockito.MockitoSugar
@@ -38,40 +38,44 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
+class ProcessingSupervisorSpec
+    extends TestKit(ActorSystem("TestProcessingSystem"))
+    with AnyWordSpecLike
+    with MockitoSugar
+    with BeforeAndAfterAll
+    with DefaultTimeout
+    with ImplicitSender
+    with ActorUtils {
 
-
-class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem")) with AnyWordSpecLike with MockitoSugar
-  with BeforeAndAfterAll with DefaultTimeout with ImplicitSender with ActorUtils {
-
-  def additionalConfiguration: Map[String, String] = Map( "logger.application" -> "ERROR",
-    "logger.play" -> "ERROR",
-    "logger.root" -> "ERROR",
+  def additionalConfiguration: Map[String, String] = Map(
+    "logger.application" -> "ERROR",
+    "logger.play"        -> "ERROR",
+    "logger.root"        -> "ERROR",
     "org.apache.logging" -> "ERROR",
-    "com.codahale" -> "ERROR")
+    "com.codahale"       -> "ERROR"
+  )
 
-  val applicationConfig  = mock[ApplicationConfiguration]
-  val mongoApi  = mock[MongoLockRepository]
-  val desConnector = mock[DesConnector]
-  val ifConnector = mock[IFConnector]
-  val metrics = mock[ApplicationMetrics]
-  val hipConnector = mock[HipConnector]
-  val mockRepository = mock[BulkCalculationMongoRepository]
-  val appConfig  = mock[AppConfig]
+  val applicationConfig = mock[ApplicationConfiguration]
+  val mongoApi          = mock[MongoLockRepository]
+  val desConnector      = mock[DesConnector]
+  val ifConnector       = mock[IFConnector]
+  val metrics           = mock[ApplicationMetrics]
+  val hipConnector      = mock[HipConnector]
+  val mockRepository    = mock[BulkCalculationMongoRepository]
+  val appConfig         = mock[AppConfig]
 
   override def beforeAll(): Unit = {
     when(applicationConfig.bulkProcessingBatchSize).thenReturn(1)
     when(mongoApi.refreshExpiry(anyString(), anyString(), any())).thenReturn(Future(true))
-    when(mongoApi.takeLock(anyString(),anyString(), any()))
+    when(mongoApi.takeLock(anyString(), anyString(), any()))
       .thenReturn(Future(Some(Lock("id", "me", Instant.now().minusSeconds(100), Instant.now().plusSeconds(100)))))
   }
 
-  override def afterAll(): Unit = {
+  override def afterAll(): Unit =
     shutdown()
-  }
 
   "processing supervisor" must {
 // This test has been commented out due to randomly failing
-
 
 //    "send requests to throttler" in {
 //
@@ -105,14 +109,17 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
 
     "send request to start with no requests queued" in {
 
-      val throttlerProbe = TestProbe()
+      val throttlerProbe        = TestProbe()
       val calculationActorProbe = TestProbe()
 
-      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, ifConnector,hipConnector,metrics,appConfig ) {
-        override lazy val throttler = throttlerProbe.ref
-        override lazy val requestActor = calculationActorProbe.ref
-        override lazy val repository = mockRepository
-      }),"process-supervisor2")
+      val processingSupervisor = TestActorRef(
+        Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, ifConnector, hipConnector, metrics, appConfig) {
+          override lazy val throttler    = throttlerProbe.ref
+          override lazy val requestActor = calculationActorProbe.ref
+          override lazy val repository   = mockRepository
+        }),
+        "process-supervisor2"
+      )
       when(mockRepository.findRequestsToProcess()).thenReturn(Future.successful(Some(Nil)))
 
       within(5 seconds) {
@@ -126,18 +133,26 @@ class ProcessingSupervisorSpec extends TestKit(ActorSystem("TestProcessingSystem
 
     "start processing and then stop when finished" in {
 
-      val throttlerProbe = TestProbe()
+      val throttlerProbe        = TestProbe()
       val calculationActorProbe = TestProbe()
 
-      val processingSupervisor = TestActorRef(Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, ifConnector, hipConnector,metrics,appConfig) {
+      val processingSupervisor = TestActorRef(
+        Props(new ProcessingSupervisor(applicationConfig, mockRepository, mongoApi, desConnector, ifConnector, hipConnector, metrics, appConfig) {
 
-        override lazy val throttler = throttlerProbe.ref
-        override lazy val requestActor = calculationActorProbe.ref
-        override lazy val repository = mockRepository
-      }),"process-supervisor3")
+          override lazy val throttler    = throttlerProbe.ref
+          override lazy val requestActor = calculationActorProbe.ref
+          override lazy val repository   = mockRepository
+        }),
+        "process-supervisor3"
+      )
 
-      val processReadyCalculationRequest = ProcessReadyCalculationRequest("test upload",1,
-        Some(ValidCalculationRequest("S2730000B",RandomNino.generate,"smith","jim",None,None,None,None,None,None)), None, None)
+      val processReadyCalculationRequest = ProcessReadyCalculationRequest(
+        "test upload",
+        1,
+        Some(ValidCalculationRequest("S2730000B", RandomNino.generate, "smith", "jim", None, None, None, None, None, None)),
+        None,
+        None
+      )
       when(mockRepository.findRequestsToProcess()).thenReturn(Future.successful(Some(List(processReadyCalculationRequest))))
 
       within(5 seconds) {

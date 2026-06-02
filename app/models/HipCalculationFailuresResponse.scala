@@ -16,8 +16,8 @@
 
 package models
 
-import play.api.libs.functional.syntax._
-import play.api.libs.json._
+import play.api.libs.functional.syntax.*
+import play.api.libs.json.*
 
 case class HipFailure(reason: String, code: Int)
 
@@ -31,7 +31,7 @@ object HipFailure {
   implicit val reads: Reads[HipFailure] = (
     (JsPath \ "reason").read[String] and
       (JsPath \ "code").read[JsValue].map(parseCode)
-    )(HipFailure.apply)
+  )(HipFailure.apply)
 
   implicit val writes: OWrites[HipFailure] = Json.writes[HipFailure]
 }

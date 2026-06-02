@@ -47,11 +47,10 @@ class CsvGenerator {
     val cells: Iterable[Cell]
 
     @nowarn
-    def toCsvString(cellCount: Int)(implicit csvFilter: CsvFilter) = {
+    def toCsvString(cellCount: Int)(implicit csvFilter: CsvFilter) =
       cells map {
         _.text
       } mkString ","
-    }
   }
 
   case class ResponseRow(cells: Iterable[Cell], error: Option[Cell] = None, whatToDo: Option[Cell] = None) extends Row {
@@ -60,12 +59,12 @@ class CsvGenerator {
 
       val padCount = (csvFilter match {
         case CsvFilter.Successful => cellCount
-        case _ => cellCount - 2
+        case _                    => cellCount - 2
       }) - cells.size
 
       (cells.toList ::: List.fill(padCount)(BlankCell) ::: (csvFilter match {
         case CsvFilter.Successful => List()
-        case _ => List(error.getOrElse(BlankCell), whatToDo.getOrElse(BlankCell))
+        case _                    => List(error.getOrElse(BlankCell), whatToDo.getOrElse(BlankCell))
       })) mkString ","
     }
   }
@@ -75,15 +74,14 @@ class CsvGenerator {
   class RowBuilder {
 
     protected val cells = new ListBuffer[Cell]()
-    protected var errorCell: Cell = BlankCell
+    protected var errorCell:           Cell = BlankCell
     protected var errorResolutionCell: Cell = BlankCell
 
-    def addCell(text: Option[Any], default: String): RowBuilder = {
+    def addCell(text: Option[Any], default: String): RowBuilder =
       addCell(text match {
         case Some(t) => t.toString
-        case _ => default
+        case _       => default
       })
-    }
 
     def addCell(text: String): RowBuilder = addCell(TextCell(text))
 
@@ -98,14 +96,14 @@ class CsvGenerator {
     }
 
     def addFilteredCell(f: PartialFunction[CsvFilter, String])(implicit filter: CsvFilter) = {
-      if (f.isDefinedAt(filter)) {
+      if f.isDefinedAt(filter) then {
         addCell(TextCell(f(filter)))
       }
       this
     }
 
     def addFilteredCells(f: PartialFunction[CsvFilter, Iterable[String]])(implicit filter: CsvFilter) = {
-      if (f.isDefinedAt(filter)) {
+      if f.isDefinedAt(filter) then {
         f(filter) foreach addCell
       }
       this
@@ -136,12 +134,12 @@ class CsvGenerator {
 
         val hasValidationErrors = request.validationErrors match {
           case Some(_) => true
-          case _ => false
+          case _       => false
         }
 
-        if (filter == CsvFilter.All) {
+        if filter == CsvFilter.All then {
           addCell(request.hasErrors match {
-            case true => Messages("gmp.error")
+            case true  => Messages("gmp.error")
             case false => Messages("gmp.success")
           })
         }
@@ -155,47 +153,50 @@ class CsvGenerator {
         addValidatedCell(convertDate(x.terminationDate), RequestFieldKey.DATE_OF_LEAVING)
 
         hasValidationErrors match {
-          case true => addValidatedCell(convertDate(x.revaluationDate), RequestFieldKey.GMP_DATE)
+          case true  => addValidatedCell(convertDate(x.revaluationDate), RequestFieldKey.GMP_DATE)
           case false => addCell(determineGmpAtDate(request))
         }
 
         addValidatedCell(convertRevalRate(x.revaluationRate), RequestFieldKey.REVALUATION_RATE)
 
-        addValidatedCell(x.dualCalc match {
-          case Some(1) => Messages("gmp.generic.yes")
-          case _ => if (hasValidationErrors) "" else Messages("gmp.generic.no")
-        }, RequestFieldKey.OPPOSITE_GENDER)
+        addValidatedCell(
+          x.dualCalc match {
+            case Some(1) => Messages("gmp.generic.yes")
+            case _       => if hasValidationErrors then "" else Messages("gmp.generic.no")
+          },
+          RequestFieldKey.OPPOSITE_GENDER
+        )
 
-        if (filter != CsvFilter.Failed) {
+        if filter != CsvFilter.Failed then {
 
           request.validationErrors match {
             case None =>
 
-              addCell(sumPeriod(request, {
-                _.gmpTotal
-              }).toString)
+              addCell(sumPeriod(request, _.gmpTotal).toString)
 
-              addCell(sumPeriod(request, {
-                _.post88GMPTotal
-              }).toString)
+              addCell(sumPeriod(request, _.post88GMPTotal).toString)
 
               addCell(x.dualCalc match {
-                case Some(d) if d == 1 => sumPeriod(request, {
-                  _.dualCalcPost90TrueTotal match {
-                    case Some(trueCalc) => trueCalc
-                    case _ => ""
-                  }
-                }).toString
+                case Some(d) if d == 1 =>
+                  sumPeriod(
+                    request,
+                    _.dualCalcPost90TrueTotal match {
+                      case Some(trueCalc) => trueCalc
+                      case _              => ""
+                    }
+                  ).toString
                 case _ => ""
               })
 
               addCell(x.dualCalc match {
-                case Some(d) if d == 1 => sumPeriod(request, {
-                  _.dualCalcPost90OppositeTotal match {
-                    case Some(oppositeCalc) => oppositeCalc
-                    case _ => "0"
-                  }
-                }).toString
+                case Some(d) if d == 1 =>
+                  sumPeriod(
+                    request,
+                    _.dualCalcPost90OppositeTotal match {
+                      case Some(oppositeCalc) => oppositeCalc
+                      case _                  => "0"
+                    }
+                  ).toString
                 case _ => ""
               })
 
@@ -205,21 +206,16 @@ class CsvGenerator {
 
         request.calculationResponse match {
           case Some(response) =>
-            response.calculationPeriods.zipWithIndex.map {
-              case (period, index) =>
-                val periodBuilder = new PeriodRowBuilder(period, index, x)
-                addCells(periodBuilder.build)
+            response.calculationPeriods.zipWithIndex.map { case (period, index) =>
+              val periodBuilder = new PeriodRowBuilder(period, index, x)
+              addCells(periodBuilder.build)
             }
           case _ =>
         }
 
-        request.getGlobalErrorMessageReason().foreach(msg =>
-          setErrorCell(TextCell(msg))
-        )
+        request.getGlobalErrorMessageReason().foreach(msg => setErrorCell(TextCell(msg)))
 
-        request.getGlobalErrorMessageWhat().foreach(msg =>
-          setErrorResolutionCell(TextCell(msg))
-        )
+        request.getGlobalErrorMessageWhat().foreach(msg => setErrorResolutionCell(TextCell(msg)))
 
       case _ if request.validationErrors.isDefined =>
 
@@ -241,87 +237,97 @@ class CsvGenerator {
     private def addValidatedCell(value: Any, validationColumn: Int): Cell = {
 
       val cell = TextCell(request.validationErrors match {
-        case Some(v) => if (v.isDefinedAt(validationColumn.toString)) v(validationColumn.toString) else value.toString
-        case _ => value.toString
+        case Some(v) => if v.isDefinedAt(validationColumn.toString) then v(validationColumn.toString) else value.toString
+        case _       => value.toString
       })
 
       addCell(cell)
       cell
     }
 
-    private def sumPeriod(request: ProcessReadyCalculationRequest, selector: (CalculationPeriod) => String) = {
+    private def sumPeriod(request: ProcessReadyCalculationRequest, selector: (CalculationPeriod) => String) =
       request.calculationResponse match {
-        case Some(response) => response.calculationPeriods.foldLeft(BigDecimal(0)) { (sum, period) => sum + BigDecimal(selector(period)) }
-        case _ => 0
+        case Some(response) => response.calculationPeriods.foldLeft(BigDecimal(0))((sum, period) => sum + BigDecimal(selector(period)))
+        case _              => 0
       }
-    }
 
-    private def convertCalcType(calcType: Option[Int]): String = {
+    private def convertCalcType(calcType: Option[Int]): String =
       calcType match {
         case Some(0) => Messages("gmp.calc_type.leaving")
         case Some(1) => Messages("gmp.calc_type.specific_date")
         case Some(2) => Messages("gmp.calc_type.payable_age")
         case Some(3) => Messages("gmp.calc_type.survivor")
-        case _ => Messages("gmp.calc_type.spa")
+        case _       => Messages("gmp.calc_type.spa")
       }
-    }
 
-    private def convertDate(date: Option[String]): String = {
+    private def convertDate(date: Option[String]): String =
       date match {
         case Some(d) =>
           val newDate = new SimpleDateFormat("yyyy-MM-dd").parse(d)
           new SimpleDateFormat(DATE_DEFAULT_FORMAT).format(newDate)
         case _ => ""
       }
-    }
 
-    private def determineGmpAtDate(request: ProcessReadyCalculationRequest): String = {
+    private def determineGmpAtDate(request: ProcessReadyCalculationRequest): String =
 
-      request.validCalculationRequest.map {
-
-        calculationRequest =>
-
-          request.calculationResponse.map {
-            calculationResponse =>
-
+      request.validCalculationRequest
+        .map { calculationRequest =>
+          request.calculationResponse
+            .map { calculationResponse =>
               calculationRequest.calctype match {
 
-                case Some(2) => calculationResponse.payableAgeDate.map {
-                  dod => dod.format(DateTimeFormatter.ofPattern(DATE_DEFAULT_FORMAT))
-                }.getOrElse("")
+                case Some(2) =>
+                  calculationResponse.payableAgeDate
+                    .map { dod =>
+                      dod.format(DateTimeFormatter.ofPattern(DATE_DEFAULT_FORMAT))
+                    }
+                    .getOrElse("")
 
                 case Some(3) =>
-                  calculationRequest.revaluationDate.map {
-                    d => {
+                  calculationRequest.revaluationDate
+                    .map { d =>
                       val newDate = new SimpleDateFormat("yyyy-MM-dd").parse(d)
                       new SimpleDateFormat(DATE_DEFAULT_FORMAT).format(newDate)
                     }
-                  }.getOrElse(calculationResponse.dateOfDeath.map {
-                    dod => dod.format(DateTimeFormatter.ofPattern(DATE_DEFAULT_FORMAT))
-                  }.getOrElse(""))
+                    .getOrElse(
+                      calculationResponse.dateOfDeath
+                        .map { dod =>
+                          dod.format(DateTimeFormatter.ofPattern(DATE_DEFAULT_FORMAT))
+                        }
+                        .getOrElse("")
+                    )
 
-                case Some(4) => calculationResponse.spaDate.map {
-                  dod => dod.format(DateTimeFormatter.ofPattern(DATE_DEFAULT_FORMAT))
-                }.getOrElse("")
+                case Some(4) =>
+                  calculationResponse.spaDate
+                    .map { dod =>
+                      dod.format(DateTimeFormatter.ofPattern(DATE_DEFAULT_FORMAT))
+                    }
+                    .getOrElse("")
 
-                case _ if calculationRequest.revaluationDate.isEmpty => calculationResponse.calculationPeriods.headOption.map {
-                  period => period.endDate.format(DateTimeFormatter.ofPattern(DATE_DEFAULT_FORMAT))
-                }.getOrElse("")
+                case _ if calculationRequest.revaluationDate.isEmpty =>
+                  calculationResponse.calculationPeriods.headOption
+                    .map { period =>
+                      period.endDate.format(DateTimeFormatter.ofPattern(DATE_DEFAULT_FORMAT))
+                    }
+                    .getOrElse("")
 
                 case _ => convertDate(calculationRequest.revaluationDate)
               }
 
-          }.getOrElse("")
-      }.getOrElse("")
-    }
+            }
+            .getOrElse("")
+        }
+        .getOrElse("")
   }
 
-  class PeriodRowBuilder(calculationPeriod: CalculationPeriod, index: Int, request: ValidCalculationRequest)
-                        (implicit filter: CsvFilter, messages: Messages) extends RowBuilder {
+  class PeriodRowBuilder(calculationPeriod: CalculationPeriod, index: Int, request: ValidCalculationRequest)(implicit
+    filter:   CsvFilter,
+    messages: Messages
+  ) extends RowBuilder {
 
     addCell(calculationPeriod.startDate match {
       case Some(date) => date.format(DateTimeFormatter.ofPattern(DATE_DEFAULT_FORMAT))
-      case _ => ""
+      case _          => ""
     })
 
     addCell(calculationPeriod.endDate.format(DateTimeFormatter.ofPattern(DATE_DEFAULT_FORMAT)))
@@ -338,23 +344,23 @@ class CsvGenerator {
 
     addCell(request.calctype match {
       case Some(x) if x > 0 => calculatePeriodRevalRate(calculationPeriod, index, request)
-      case _ => ""
+      case _                => ""
     })
 
-    if (filter != CsvFilter.Successful) {
+    if filter != CsvFilter.Successful then {
       addCell(calculationPeriod.getPeriodErrorMessageReason().getOrElse(""))
       addCell(calculationPeriod.getPeriodErrorMessageWhat().getOrElse(""))
     }
 
-    private def calculatePeriodRevalRate(period: CalculationPeriod, index: Int, request: ValidCalculationRequest): String = {
-      if (period.revaluationRate == 0) {
+    private def calculatePeriodRevalRate(period: CalculationPeriod, index: Int, request: ValidCalculationRequest): String =
+      if period.revaluationRate == 0 then {
         ""
       } else {
         request.memberIsInScheme match {
           case Some(true) if Set(2, 3, 4) contains request.calctype.get => ""
-          case Some(true) if request.calctype.get == 1 && index == 0 => ""
-          case Some(false) =>
-            if (request.calctype.get == 1 && index == 0 && (!period.endDate.isBefore(LocalDate.now) || period.revalued.getOrElse(1) == 1)) {
+          case Some(true) if request.calctype.get == 1 && index == 0    => ""
+          case Some(false)                                              =>
+            if request.calctype.get == 1 && index == 0 && (!period.endDate.isBefore(LocalDate.now) || period.revalued.getOrElse(1) == 1) then {
               ""
             } else {
               convertRevalRate(Some(period.revaluationRate))
@@ -362,51 +368,49 @@ class CsvGenerator {
           case _ => convertRevalRate(Some(period.revaluationRate))
         }
       }
-    }
 
   }
 
   class HeaderRowBuilder(periodCount: Int)(implicit filter: CsvFilter, messages: Messages) extends RowBuilder {
 
-    val periodCell = (msg: String, periodIndex: Int) => new Cell {
-      val text = s"${Messages("gmp.period")} $periodIndex ${Messages(msg)}"
-    }
-
-    addFilteredCell({
-        case CsvFilter.All => Messages("gmp.status") // Add status column only for all
-      })
-      .addCell(Messages("gmp.bulk.csv.headers").split(",")) // headers for all
-      .addFilteredCells({
-        case CsvFilter.All | CsvFilter.Successful => Messages("gmp.bulk.totals.headers").split(",") // totals for all
-      })
-      .addRows(generatePeriodHeaders(periodCount))
-      .addFilteredCells({
-        case CsvFilter.All | CsvFilter.Failed => Messages("gmp.bulk.csv.globalerror.headers").split(",") // global errors for all and failed
-      })
-
-    private def generatePeriodHeaders(periodCount: Int) = {
-      (1 to periodCount).map {
-        implicit index =>
-
-          val builder = new RowBuilder
-
-          builder.addCell(periodCell("gmp.period.start_date", index))
-            .addCell(periodCell("gmp.period.end_date", index))
-            .addCell(periodCell("gmp.period.total", index))
-            .addCell(periodCell("gmp.period.post_88", index))
-            .addCell(periodCell("gmp.period.post_90_true", index))
-            .addCell(periodCell("gmp.period.post_90_opp", index))
-            .addCell(periodCell("gmp.period.reval_rate", index))
-            .addFilteredCell({
-              case CsvFilter.All | CsvFilter.Failed => periodCell("gmp.period.error", index).text
-            })
-            .addFilteredCell({
-              case CsvFilter.All | CsvFilter.Failed => periodCell("gmp.period.what", index).text
-            })
-
-          builder.build
+    val periodCell = (msg: String, periodIndex: Int) =>
+      new Cell {
+        val text = s"${Messages("gmp.period")} $periodIndex ${Messages(msg)}"
       }
+
+    addFilteredCell { case CsvFilter.All =>
+      Messages("gmp.status") // Add status column only for all
     }
+      .addCell(Messages("gmp.bulk.csv.headers").split(",")) // headers for all
+      .addFilteredCells { case CsvFilter.All | CsvFilter.Successful =>
+        Messages("gmp.bulk.totals.headers").split(",") // totals for all
+      }
+      .addRows(generatePeriodHeaders(periodCount))
+      .addFilteredCells { case CsvFilter.All | CsvFilter.Failed =>
+        Messages("gmp.bulk.csv.globalerror.headers").split(",") // global errors for all and failed
+      }
+
+    private def generatePeriodHeaders(periodCount: Int) =
+      (1 to periodCount).map { implicit index =>
+        val builder = new RowBuilder
+
+        builder
+          .addCell(periodCell("gmp.period.start_date", index))
+          .addCell(periodCell("gmp.period.end_date", index))
+          .addCell(periodCell("gmp.period.total", index))
+          .addCell(periodCell("gmp.period.post_88", index))
+          .addCell(periodCell("gmp.period.post_90_true", index))
+          .addCell(periodCell("gmp.period.post_90_opp", index))
+          .addCell(periodCell("gmp.period.reval_rate", index))
+          .addFilteredCell { case CsvFilter.All | CsvFilter.Failed =>
+            periodCell("gmp.period.error", index).text
+          }
+          .addFilteredCell { case CsvFilter.All | CsvFilter.Failed =>
+            periodCell("gmp.period.what", index).text
+          }
+
+        builder.build
+      }
 
     override def build = HeaderRow(cells)
 
@@ -434,7 +438,7 @@ class CsvGenerator {
     implicit val filter = csvFilter.get
 
     val maxPeriods: Int = result.calculationRequests match {
-      case calcRequests@_ :: _ =>
+      case calcRequests @ _ :: _ =>
         calcRequests.map { req =>
           req.calculationResponse match {
             case Some(x: GmpBulkCalculationResponse) if x.calculationPeriods.nonEmpty =>
@@ -445,7 +449,7 @@ class CsvGenerator {
       case Nil => 0
     }
 
-    val headerRow = new HeaderRowBuilder(maxPeriods).build
+    val headerRow  = new HeaderRowBuilder(maxPeriods).build
     val csvBuilder = new CsvBuilder(headerRow.cells.size)
 
     csvBuilder.addRow(Messages("gmp.bulk.csv.guidance"))
@@ -459,18 +463,19 @@ class CsvGenerator {
     csvBuilder.build
   }
 
-  def generateContributionsCsv(request: ProcessedBulkCalculationRequest)(implicit messages: Messages): String = {
+  def generateContributionsCsv(request: ProcessedBulkCalculationRequest)(implicit messages: Messages): String =
 
-    Messages("gmp.bulk.csv.contributions.headers") + "\n" + request.calculationRequests.map {
-      case calcRequest => {
+    Messages("gmp.bulk.csv.contributions.headers") + "\n" + request.calculationRequests
+      .map { case calcRequest =>
         calcRequest.validCalculationRequest match {
-          case Some(validCalcRequest) => {
+          case Some(validCalcRequest) =>
 
             // Write out each period
             val periodRows = calcRequest.calculationResponse match {
-              case Some(response) => response.calculationPeriods.map {
-                generateContributionsPeriodRowData
-              }
+              case Some(response) =>
+                response.calculationPeriods.map {
+                  generateContributionsPeriodRowData
+                }
               case _ => List.empty[String]
             }
 
@@ -482,65 +487,63 @@ class CsvGenerator {
               periodRows.size match {
                 case 0 => ""
                 case _ => periodRows.head
-              }).mkString(",")
+              }
+            ).mkString(",")
 
             firstRow + generateLineSeparator(calcRequest) + (periodRows.size match {
               case 0 => ""
-              case _ => periodRows.tail.map {
-                "," * 4 + _
-              }.mkString("\n")
+              case _ =>
+                periodRows.tail
+                  .map {
+                    "," * 4 + _
+                  }
+                  .mkString("\n")
             })
 
-          }
           case _ => ""
         }
       }
-    }.mkString("\n")
-  }
+      .mkString("\n")
 
-  private def generateContributionsPeriodRowData(period: CalculationPeriod): String = {
+  private def generateContributionsPeriodRowData(period: CalculationPeriod): String =
 
     List(
       (period.startDate match {
         case Some(d) => d.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-        case _ => ""
+        case _       => ""
       }) + " - " + period.endDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
       period.contsAndEarnings match {
         case Some(c) =>
-          val map = c.foldLeft(Map[Int, String]()) {
-            (m, earnings) => {
-              if (m.contains(earnings.taxYear)) {
-                m + (earnings.taxYear -> (m(earnings.taxYear) + " & " + earnings.contEarnings))
-              } else {
-                m + (earnings.taxYear -> earnings.contEarnings)
-              }
+          val map = c.foldLeft(Map[Int, String]()) { (m, earnings) =>
+            if m.contains(earnings.taxYear) then {
+              m + (earnings.taxYear -> (m(earnings.taxYear) + " & " + earnings.contEarnings))
+            } else {
+              m + (earnings.taxYear -> earnings.contEarnings)
             }
           }
 
-          (1978 to 1998).map {
-            map.getOrElse(_, "")
-          }.mkString(",")
+          (1978 to 1998)
+            .map {
+              map.getOrElse(_, "")
+            }
+            .mkString(",")
         case _ => "," * 20
       }
     ).mkString(",")
 
-  }
-
-  private def convertRevalRate(revalRate: Option[Int]): String = {
+  private def convertRevalRate(revalRate: Option[Int]): String =
     revalRate match {
       case Some(0) => RevaluationRate.HMRC
       case Some(1) => RevaluationRate.S148
       case Some(2) => RevaluationRate.FIXED
       case Some(3) => RevaluationRate.LIMITED
-      case _ => ""
+      case _       => ""
     }
-  }
 
-  private def generateLineSeparator(calcRequest: ProcessReadyCalculationRequest): String = {
+  private def generateLineSeparator(calcRequest: ProcessReadyCalculationRequest): String =
     calcRequest.calculationResponse match {
       case Some(response) if response.calculationPeriods.size > 1 => "\n"
-      case _ => ""
+      case _                                                      => ""
     }
-  }
 
 }

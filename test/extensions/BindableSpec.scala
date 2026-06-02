@@ -33,7 +33,7 @@ class BindableSpec extends PlaySpec {
 
     "return the filter string when unbound" in {
       val bindable = CsvFilter.Failed
-      val filter = CsvFilterBindable.unbind("unused", bindable)
+      val filter   = CsvFilterBindable.unbind("unused", bindable)
 
       filter must be("FAILED")
     }

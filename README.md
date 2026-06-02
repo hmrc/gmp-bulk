@@ -250,6 +250,30 @@ To run the application execute
 sbt run
 ```
 
+## Code formatting (scalafmt)
+
+This project uses [scalafmt](https://scalameta.org/scalafmt/) via the `sbt-scalafmt` plugin.
+
+- To format the main and test source code:
+
+  ```bash
+  sbt scalafmtAll
+  ```
+
+- To format only the main sources:
+
+  ```bash
+  sbt scalafmt
+  ```
+
+- To format only the test sources:
+
+  ```bash
+  sbt test:scalafmt
+  ```
+
+Formatting is **not** wired into `compile` by default. Run `scalafmt`/`scalafmtAll` separately (for example, before committing or as part of a CI check), and use `compile` just for compilation.
+
 ### License
 
 This code is open source software licensed under the [Apache 2.0 License]("http://www.apache.org/licenses/LICENSE-2.0.html").

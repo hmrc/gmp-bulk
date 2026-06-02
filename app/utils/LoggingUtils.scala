@@ -17,31 +17,32 @@
 package utils
 
 object LoggingUtils {
-  private val RedactedValue = "[REDACTED]"
+  private val RedactedValue  = "[REDACTED]"
   private val MaxErrorLength = 100
 
-  /**
-   * Redacts sensitive information from strings before logging
-   * @param value The value to be redacted
-   * @return Redacted value (first 3 characters shown, rest redacted if longer than 3)
-   */
-  private def redactSensitive(value: String): String = {
-    if (value == null) {
+  /** Redacts sensitive information from strings before logging
+    * @param value
+    *   The value to be redacted
+    * @return
+    *   Redacted value (first 3 characters shown, rest redacted if longer than 3)
+    */
+  private def redactSensitive(value: String): String =
+    if value == null then {
       RedactedValue
-    } else if (value.length <= 3) {
+    } else if value.length <= 3 then {
       "*" * value.length
     } else {
       value.take(3) + "*" * (value.length - 3)
     }
-  }
 
-  /**
-   * Redacts sensitive information from error messages
-   * @param error The error message to be redacted
-   * @return Redacted error message with sensitive information removed
-   */
-  private def redactError(error: String): String = {
-    if (error == null) {
+  /** Redacts sensitive information from error messages
+    * @param error
+    *   The error message to be redacted
+    * @return
+    *   Redacted error message with sensitive information removed
+    */
+  private def redactError(error: String): String =
+    if error == null then {
       ""
     } else {
       // Redact any potential sensitive information from error messages
@@ -50,32 +51,32 @@ object LoggingUtils {
         .replaceAll("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}", "[email]")
         .take(MaxErrorLength) // Limit error message length
     }
-  }
 
-  /**
-   * Redacts sensitive information from calculation requests and responses
-   * @param json The JSON string containing calculation data
-   * @return Redacted JSON string with sensitive information removed
-   */
+  /** Redacts sensitive information from calculation requests and responses
+    * @param json
+    *   The JSON string containing calculation data
+    * @return
+    *   Redacted JSON string with sensitive information removed
+    */
   def redactCalculationData(json: String): String = {
-    import play.api.libs.json._
+    import play.api.libs.json.*
 
     def redact(js: JsValue): JsValue = js match {
       case JsObject(fields) =>
         JsObject(fields.map { case (k, v) =>
           val key = k.toLowerCase
           val redactedValue: JsValue = v match {
-            case JsString(s) if key.contains("nino") || key == "scon" => JsString(redactSensitive(s))
+            case JsString(s) if key.contains("nino") || key == "scon"           => JsString(redactSensitive(s))
             case JsString(s) if key.contains("name") || key.contains("surname") =>
-              JsString(if (s.length > 3) s.take(1) + "*" * (s.length - 1) else "*" * s.length)
+              JsString(if s.length > 3 then s.take(1) + "*" * (s.length - 1) else "*" * s.length)
             case o: JsObject => redact(o)
             case a: JsArray  => JsArray(a.value.map(redact))
-            case other       => other
+            case other => other
           }
           k -> redactedValue
         })
       case JsArray(values) => JsArray(values.map(redact))
-      case other => other
+      case other           => other
     }
 
     try {
@@ -83,7 +84,7 @@ object LoggingUtils {
       parsed match {
         case obj: JsObject => Json.prettyPrint(redact(obj))
         case arr: JsArray  => Json.prettyPrint(redact(arr))
-        case _             => json
+        case _ => json
       }
     } catch {
       case _: Throwable => redactError(json)

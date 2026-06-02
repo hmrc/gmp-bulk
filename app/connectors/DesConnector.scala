@@ -21,10 +21,10 @@ import com.google.inject.Inject
 import config.ApplicationConfiguration
 import metrics.ApplicationMetrics
 import models.{CalculationResponse, ValidCalculationRequest}
-import play.api.http.Status._
+import play.api.http.Status.*
 import play.api.{Configuration, Logger}
 import uk.gov.hmrc.circuitbreaker.{CircuitBreakerConfig, UsingCircuitBreaker}
-import uk.gov.hmrc.http._
+import uk.gov.hmrc.http.*
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.http.client.HttpClientV2
 
@@ -45,13 +45,14 @@ case object DesGetUnexpectedResponse extends DesGetResponse
 
 case class DesGetErrorResponse(e: Exception) extends DesGetResponse
 
-class DesConnector @Inject()(val runModeConfiguration: Configuration,
-                             http: HttpClientV2,
-                             val metrics: ApplicationMetrics,
-                             servicesConfig: ServicesConfig,
-                             applicationConfig: ApplicationConfiguration,
-                             implicit val ec: ExecutionContext) extends UsingCircuitBreaker {
-
+class DesConnector @Inject() (
+  val runModeConfiguration: Configuration,
+  http:                     HttpClientV2,
+  val metrics:              ApplicationMetrics,
+  servicesConfig:           ServicesConfig,
+  applicationConfig:        ApplicationConfiguration,
+  implicit val ec:          ExecutionContext
+) extends UsingCircuitBreaker {
 
   val logger: Logger = Logger(this.getClass)
 
@@ -61,13 +62,13 @@ class DesConnector @Inject()(val runModeConfiguration: Configuration,
 
   private implicit val hc: HeaderCarrier = HeaderCarrier()
 
-  val serviceKey = servicesConfig.getConfString("nps.key", "")
+  val serviceKey         = servicesConfig.getConfString("nps.key", "")
   val serviceEnvironment = servicesConfig.getConfString("nps.environment", "")
   lazy val citizenDetailsUrl: String = servicesConfig.baseUrl("citizen-details")
 
   lazy val serviceURL = servicesConfig.baseUrl("nps")
-  val baseURI = "pensions/individuals/gmp"
-  val baseSconURI = "pensions/gmp/scon"
+  val baseURI         = "pensions/individuals/gmp"
+  val baseSconURI     = "pensions/gmp/scon"
 
   val calcURI = s"$serviceURL/$baseURI"
 
@@ -76,75 +77,83 @@ class DesConnector @Inject()(val runModeConfiguration: Configuration,
   def calculate(request: ValidCalculationRequest): Future[CalculationResponse] = {
     val queryParams = request.queryParams
     val queryString = queryParams.map { case (key, value) => s"$key=$value" }.mkString("&")
-    val url = s"$calcURI${request.desUri}?$queryString"
+    val url         = s"$calcURI${request.desUri}?$queryString"
     logger.info(s"[calculate] contacting DES at $url")
 
     val startTime = System.currentTimeMillis()
-    withCircuitBreaker(http.get(new URL(url))
-      .setHeader(npsHeaders*)
-      .execute[HttpResponse]
-      .map { response =>
-        metrics.registerStatusCode(response.status.toString)
-        metrics.desConnectionTime(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
+    withCircuitBreaker(
+      http
+        .get(new URL(url))
+        .setHeader(npsHeaders*)
+        .execute[HttpResponse]
+        .map { response =>
+          metrics.registerStatusCode(response.status.toString)
+          metrics.desConnectionTime(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
 
-        response.status match {
-        case OK | UNPROCESSABLE_ENTITY =>
-          metrics.registerSuccessfulRequest()
-          response.json.as[CalculationResponse]
+          response.status match {
+            case OK | UNPROCESSABLE_ENTITY =>
+              metrics.registerSuccessfulRequest()
+              response.json.as[CalculationResponse]
 
-        case errorStatus: Int =>
-          logger.error(s"[calculate] DES URI $url returned code $errorStatus and response body: ${response.body}")
-          metrics.registerFailedRequest()
+            case errorStatus: Int =>
+              logger.error(s"[calculate] DES URI $url returned code $errorStatus and response body: ${response.body}")
+              metrics.registerFailedRequest()
 
-          errorStatus match {
-            case status if status >= 500 && status < 600 =>
-              throw UpstreamErrorResponse(s"Call to Individual Pension calculation on NPS Service failed with status code ${status}", status, status)
-            case TOO_MANY_REQUESTS => throw new BreakerException
-            case 499 => throw new BreakerException
-            case _ => throw UpstreamErrorResponse(s"An error status $errorStatus was encountered", errorStatus, errorStatus)
+              errorStatus match {
+                case status if status >= 500 && status < 600 =>
+                  throw UpstreamErrorResponse(
+                    s"Call to Individual Pension calculation on NPS Service failed with status code $status",
+                    status,
+                    status
+                  )
+                case TOO_MANY_REQUESTS => throw new BreakerException
+                case 499               => throw new BreakerException
+                case _                 => throw UpstreamErrorResponse(s"An error status $errorStatus was encountered", errorStatus, errorStatus)
+              }
           }
         }
-      }
     )
   }
 
-  private def npsHeaders =Seq(
-      "Gov-Uk-Originator-Id" -> servicesConfig.getConfString("nps.originator-id",""),
-      "Authorization" -> s"Bearer $serviceKey",
-      "Environment" -> serviceEnvironment)
+  private def npsHeaders = Seq(
+    "Gov-Uk-Originator-Id" -> servicesConfig.getConfString("nps.originator-id", ""),
+    "Authorization"        -> s"Bearer $serviceKey",
+    "Environment"          -> serviceEnvironment
+  )
 
-  override protected def circuitBreakerConfig: CircuitBreakerConfig = {
-    CircuitBreakerConfig("DesConnector",
+  override protected def circuitBreakerConfig: CircuitBreakerConfig =
+    CircuitBreakerConfig(
+      "DesConnector",
       applicationConfig.numberOfCallsToTriggerStateChange,
       applicationConfig.unavailablePeriodDuration,
-      applicationConfig.unstablePeriodDuration)
-  }
+      applicationConfig.unstablePeriodDuration
+    )
 
-  override protected def breakOnException(t: Throwable): Boolean = {
+  override protected def breakOnException(t: Throwable): Boolean =
     t match {
       // $COVERAGE-OFF$
-      case _: BreakerException => true
-      case _: BadGatewayException => true
+      case _: BreakerException        => true
+      case _: BadGatewayException     => true
       case _: GatewayTimeoutException => true
       case _ => false
       // $COVERAGE-ON$
     }
-  }
 
   def getPersonDetails(nino: String): Future[DesGetResponse] = {
 
     val desHeaders = Seq(
-      "Gov-Uk-Originator-Id" -> servicesConfig.getConfString("des.originator-id",""),
-      "Authorization" -> s"Bearer $serviceKey",
-      "Environment" -> serviceEnvironment
+      "Gov-Uk-Originator-Id" -> servicesConfig.getConfString("des.originator-id", ""),
+      "Authorization"        -> s"Bearer $serviceKey",
+      "Environment"          -> serviceEnvironment
     )
 
     val startTime = System.currentTimeMillis()
-    val url = s"$citizenDetailsUrl/citizen-details/$nino/etag"
+    val url       = s"$citizenDetailsUrl/citizen-details/$nino/etag"
 
     logger.info(s"[getPersonDetails] Contacting DES at $url")
 
-    http.get(url"$url")
+    http
+      .get(url"$url")
       .setHeader(desHeaders*)
       .execute[HttpResponse]
       .map { response =>
@@ -154,15 +163,15 @@ class DesConnector @Inject()(val runModeConfiguration: Configuration,
           case LOCKED =>
             metrics.mciLockResult()
             DesGetHiddenRecordResponse
-          case NOT_FOUND => DesGetNotFoundResponse
-          case OK => DesGetSuccessResponse
+          case NOT_FOUND             => DesGetNotFoundResponse
+          case OK                    => DesGetSuccessResponse
           case INTERNAL_SERVER_ERROR => DesGetUnexpectedResponse
-          case _ => DesGetUnexpectedResponse
+          case _                     => DesGetUnexpectedResponse
         }
 
-    } recover {
+      } recover {
       case _: NotFoundException => DesGetNotFoundResponse
-      case e: Exception =>
+      case e: Exception         =>
         logger.error(s"[getPersonDetails] Exception thrown getting individual record from DES: $e")
         metrics.mciErrorResult()
         DesGetErrorResponse(e)

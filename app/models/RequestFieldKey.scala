@@ -19,17 +19,17 @@ package models
 case class RequestFieldKey(fieldKey: Int)
 
 object RequestFieldKey {
-  val LINE_ERROR_TOO_FEW = -1
+  val LINE_ERROR_TOO_FEW  = -1
   val LINE_ERROR_TOO_MANY = -2
-  val LINE_ERROR_EMPTY = -3
-  val SCON = 0
-  val NINO = 1
-  val SURNAME = 3
-  val FORENAME = 2
-  val MEMBER_REFERENCE = 4
-  val CALC_TYPE = 5
-  val DATE_OF_LEAVING = 6
-  val GMP_DATE = 7
-  val REVALUATION_RATE = 8
-  val OPPOSITE_GENDER = 9
+  val LINE_ERROR_EMPTY    = -3
+  val SCON                = 0
+  val NINO                = 1
+  val SURNAME             = 3
+  val FORENAME            = 2
+  val MEMBER_REFERENCE    = 4
+  val CALC_TYPE           = 5
+  val DATE_OF_LEAVING     = 6
+  val GMP_DATE            = 7
+  val REVALUATION_RATE    = 8
+  val OPPOSITE_GENDER     = 9
 }

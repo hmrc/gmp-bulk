@@ -26,7 +26,7 @@ trait ExclusiveScheduledJob extends ScheduledJob {
   def executeInMutex(implicit ec: ExecutionContext): Future[this.Result]
 
   final def execute(implicit ec: ExecutionContext): Future[Result] =
-    if (mutex.tryAcquire()) {
+    if mutex.tryAcquire() then {
       Try(executeInMutex) match {
         case Success(f) =>
           val execution = f andThen { case _ =>
@@ -43,7 +43,7 @@ trait ExclusiveScheduledJob extends ScheduledJob {
     } else {
       Future.successful(Result("Skipping execution: job running"))
     }
-    
+
   @volatile private var currentExecution: Option[Future[Result]] = None
 
   override def runningFuture: Option[Future[Result]] = currentExecution

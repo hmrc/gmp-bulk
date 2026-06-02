@@ -39,7 +39,7 @@ import scala.concurrent.duration.*
 class AuthActionSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSugar {
 
   class Harness(authAction: AuthAction) extends BaseController {
-    def onPageLoad(): Action[AnyContent] = authAction { request => Ok }
+    def onPageLoad(): Action[AnyContent] = authAction(request => Ok)
 
     override def controllerComponents: ControllerComponents = stubMessagesControllerComponents()
   }
@@ -56,15 +56,15 @@ class AuthActionSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSugar
           mockMicroserviceAuthConnector.authorise[Unit](
             any[Predicate],
             any[Retrieval[Unit]]
-          )(
-            using any[HeaderCarrier],
+          )(using
+            any[HeaderCarrier],
             any[ExecutionContext]
           )
         ).thenReturn(Future.failed(new MissingBearerToken))
 
         val authAction = new AuthAction(mockMicroserviceAuthConnector, stubMessagesControllerComponents())
         val controller = new Harness(authAction)
-        val result = controller.onPageLoad()(FakeRequest("", ""))
+        val result     = controller.onPageLoad()(FakeRequest("", ""))
         status(result) mustBe UNAUTHORIZED
 
       }
@@ -78,8 +78,8 @@ class AuthActionSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSugar
           mockMicroserviceAuthConnector.authorise[Unit](
             any[Predicate],
             any[Retrieval[Unit]]
-          )(
-            using any[HeaderCarrier],
+          )(using
+            any[HeaderCarrier],
             any[ExecutionContext]
           )
         ).thenReturn(Future.successful(()))
@@ -88,8 +88,8 @@ class AuthActionSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSugar
           mockMicroserviceAuthConnector.authorise[Unit](
             any[Predicate],
             any[Retrieval[Unit]]
-          )(
-            using any[HeaderCarrier],
+          )(using
+            any[HeaderCarrier],
             any[ExecutionContext]
           )
         ).thenReturn(Future.successful(()))

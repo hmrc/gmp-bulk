@@ -37,7 +37,7 @@ trait RunningOfScheduledJobs extends Logging {
   val applicationLifecycle: ApplicationLifecycle
 
   private[scheduling] var cancellables: Seq[Cancellable] = Seq.empty
-  
+
   cancellables = scheduledJobs.map { job =>
     scheduler.scheduleAtFixedRate(job.initialDelay, job.interval)(new Runnable {
       override def run(): Unit = {
@@ -63,17 +63,19 @@ trait RunningOfScheduledJobs extends Logging {
     Future
       .sequence(
         scheduledJobs.flatMap { job =>
-          job.runningFuture.map { execution =>
-            logger.warn(s"Waiting for job ${job.configKey} to finish.")
-            execution
-              .map(_ => ())
-              .recover { case throwable =>
-                logger.warn(s"Job ${job.configKey} finished with failure during shutdown", throwable)
-              }
-          }.orElse {
-            logger.info(s"Job ${job.configKey} is not running.")
-            None
-          }
+          job.runningFuture
+            .map { execution =>
+              logger.warn(s"Waiting for job ${job.configKey} to finish.")
+              execution
+                .map(_ => ())
+                .recover { case throwable =>
+                  logger.warn(s"Job ${job.configKey} finished with failure during shutdown", throwable)
+                }
+            }
+            .orElse {
+              logger.info(s"Job ${job.configKey} is not running.")
+              None
+            }
         }
       )
       .map(_ => ())

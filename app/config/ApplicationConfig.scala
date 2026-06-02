@@ -27,39 +27,40 @@ import java.util.Base64
 import scala.annotation.nowarn
 
 trait ApplicationConfig {
-  val bulkProcessingBatchSize: Int
+  val bulkProcessingBatchSize:           Int
   val numberOfCallsToTriggerStateChange: Int
-  val unavailablePeriodDuration: Int
-  val unstablePeriodDuration: Int
-  val bulkProcessingTps: Int
-  val bulkProcessingInterval: Int
-  val ifEnabled: Boolean
-  val logParentsChildrenEnabled: Boolean
+  val unavailablePeriodDuration:         Int
+  val unstablePeriodDuration:            Int
+  val bulkProcessingTps:                 Int
+  val bulkProcessingInterval:            Int
+  val ifEnabled:                         Boolean
+  val logParentsChildrenEnabled:         Boolean
 }
 
-class ApplicationConfiguration@Inject()(configuration: Configuration) extends ApplicationConfig {
+class ApplicationConfiguration @Inject() (configuration: Configuration) extends ApplicationConfig {
 
   override val bulkProcessingBatchSize = configuration.getOptional[Int](s"bulk-batch-size").getOrElse(100)
-  override val bulkProcessingTps = configuration.getOptional[Int](s"bulk-processing-tps").getOrElse(10)
+  override val bulkProcessingTps       = configuration.getOptional[Int](s"bulk-processing-tps").getOrElse(10)
   override val bulkProcessingInterval: Int = divide(bulkProcessingBatchSize, bulkProcessingTps, RoundingMode.UP)
-  override val numberOfCallsToTriggerStateChange = configuration.getOptional[Int](s"circuit-breaker.number-of-calls-to-trigger-state-change").getOrElse(10)
-  override val unavailablePeriodDuration: Int = configuration.getOptional[Int](s"circuit-breaker.unavailable-period-duration").getOrElse(300)
-  override val unstablePeriodDuration: Int = configuration.getOptional[Int](s"circuit-breaker.unstable-period-duration").getOrElse(60)
-  override val ifEnabled: Boolean = configuration.getOptional[Boolean]("ifs-enabled").getOrElse(false)
+  override val numberOfCallsToTriggerStateChange =
+    configuration.getOptional[Int](s"circuit-breaker.number-of-calls-to-trigger-state-change").getOrElse(10)
+  override val unavailablePeriodDuration: Int     = configuration.getOptional[Int](s"circuit-breaker.unavailable-period-duration").getOrElse(300)
+  override val unstablePeriodDuration:    Int     = configuration.getOptional[Int](s"circuit-breaker.unstable-period-duration").getOrElse(60)
+  override val ifEnabled:                 Boolean = configuration.getOptional[Boolean]("ifs-enabled").getOrElse(false)
   override val logParentsChildrenEnabled: Boolean = configuration.getOptional[Boolean]("log-parents-children-enabled").getOrElse(false)
 }
 @Singleton
-class AppConfig @Inject()(implicit
-                          @nowarn configuration: Configuration,
-                          servicesConfig: ServicesConfig,
-                          val featureSwitches: FeatureSwitches
-                         ) {
+class AppConfig @Inject() (implicit
+  @nowarn configuration: Configuration,
+  servicesConfig:        ServicesConfig,
+  val featureSwitches:   FeatureSwitches
+) {
 
-  import servicesConfig._
+  import servicesConfig.*
 
-  def hipUrl: String = servicesConfig.baseUrl("hip")
+  def hipUrl:           String = servicesConfig.baseUrl("hip")
   private val clientId: String = getString("microservice.services.hip.client-id")
-  private val secret: String   = getString("microservice.services.hip.client-secret")
+  private val secret:   String = getString("microservice.services.hip.client-secret")
 
   def hipAuthorisationToken: String =
     Base64.getEncoder.encodeToString(s"$clientId:$secret".getBytes("UTF-8"))
@@ -68,10 +69,10 @@ class AppConfig @Inject()(implicit
     "Environment" -> getString("microservice.services.hip.environment")
 
   // These are now constants
-  def originatorIdKey: String           = Constants.OriginatorIdKey
-  def originatorIdValue: String         = getString("microservice.services.hip.originator-id-value")
-  def originatingSystem: String         = Constants.XOriginatingSystemHeader
-  def transmittingSystem: String        = Constants.XTransmittingSystemHeader
+  def originatorIdKey:    String = Constants.OriginatorIdKey
+  def originatorIdValue:  String = getString("microservice.services.hip.originator-id-value")
+  def originatingSystem:  String = Constants.XOriginatingSystemHeader
+  def transmittingSystem: String = Constants.XTransmittingSystemHeader
 
   def isHipEnabled: Boolean = featureSwitches.hipIntegration.enabled
   def isIfsEnabled: Boolean = featureSwitches.ifsMigration.enabled

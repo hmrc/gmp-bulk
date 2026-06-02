@@ -17,9 +17,9 @@
 package connectors
 
 import java.time.LocalDate
-import org.mockito.ArgumentMatchers._
-import org.mockito.Mockito._
-import org.scalatest.{BeforeAndAfter, _}
+import org.mockito.ArgumentMatchers.*
+import org.mockito.Mockito.*
+import org.scalatest.{BeforeAndAfter, *}
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.Environment
 import play.api.libs.json.Json
@@ -28,13 +28,13 @@ import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import java.net.URL
 import java.time.format.DateTimeFormatter
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 class EmailConnectorSpec extends HttpClientV2Helper with GuiceOneAppPerSuite with BeforeAndAfter {
 
-  val environment = app.injector.instanceOf[Environment]
+  val environment         = app.injector.instanceOf[Environment]
   lazy val servicesConfig = app.injector.instanceOf[ServicesConfig]
 
   class TestEmailConnector extends EmailConnector(mockHttp, app.configuration, servicesConfig, ExecutionContext.global)
@@ -87,24 +87,23 @@ class EmailConnectorSpec extends HttpClientV2Helper with GuiceOneAppPerSuite wit
 
     "A failed send upload received templated email method" when {
 
-        "must return a false result" in {
-          val template = ReceivedUploadTemplate("joe@bloggs.com", "upload-ref")
+      "must return a false result" in {
+        val template = ReceivedUploadTemplate("joe@bloggs.com", "upload-ref")
 
-          requestBuilderExecute[HttpResponse](Future.successful(HttpResponse(400, "")))
+        requestBuilderExecute[HttpResponse](Future.successful(HttpResponse(400, "")))
 
-          val result = Await.result(new TestEmailConnector().sendReceivedTemplatedEmail(template), 5 seconds)
-          result must be(false)
-        }
+        val result = Await.result(new TestEmailConnector().sendReceivedTemplatedEmail(template), 5 seconds)
+        result must be(false)
+      }
 
     }
-
 
     "The send upload processed templated email method" when {
 
       val date = LocalDate.now
 
       "must return a true result" in {
-        val template = ProcessedUploadTemplate("joe@bloggs.com", "upload-ref", date ,"a1234567")
+        val template = ProcessedUploadTemplate("joe@bloggs.com", "upload-ref", date, "a1234567")
 
         requestBuilderExecute[HttpResponse](Future.successful(HttpResponse(202, "")))
 
@@ -114,7 +113,7 @@ class EmailConnectorSpec extends HttpClientV2Helper with GuiceOneAppPerSuite wit
       }
 
       "must send the user's email address" in {
-        val template = ProcessedUploadTemplate("joe@bloggs.com", "upload-ref", date ,"a1234567")
+        val template = ProcessedUploadTemplate("joe@bloggs.com", "upload-ref", date, "a1234567")
 
         requestBuilderExecute[HttpResponse](Future.successful(HttpResponse(202, "")))
 
@@ -125,7 +124,7 @@ class EmailConnectorSpec extends HttpClientV2Helper with GuiceOneAppPerSuite wit
       }
 
       "must send the user's uppload reference" in {
-        val template = ProcessedUploadTemplate("joe@bloggs.com", "upload-ref", date ,"a1234567")
+        val template = ProcessedUploadTemplate("joe@bloggs.com", "upload-ref", date, "a1234567")
 
         requestBuilderExecute[HttpResponse](Future.successful(HttpResponse(202, "")))
 
@@ -136,7 +135,7 @@ class EmailConnectorSpec extends HttpClientV2Helper with GuiceOneAppPerSuite wit
       }
 
       "must send the user's upload date" in {
-        val template = ProcessedUploadTemplate("joe@bloggs.com", "upload-ref", date ,"a1234567")
+        val template = ProcessedUploadTemplate("joe@bloggs.com", "upload-ref", date, "a1234567")
 
         requestBuilderExecute[HttpResponse](Future.successful(HttpResponse(202, "")))
 
@@ -147,7 +146,7 @@ class EmailConnectorSpec extends HttpClientV2Helper with GuiceOneAppPerSuite wit
       }
 
       "must send the user's user id" in {
-        val template = ProcessedUploadTemplate("joe@bloggs.com", "upload-ref", date ,"a1234567")
+        val template = ProcessedUploadTemplate("joe@bloggs.com", "upload-ref", date, "a1234567")
 
         requestBuilderExecute[HttpResponse](Future.successful(HttpResponse(202, "")))
 
@@ -162,7 +161,7 @@ class EmailConnectorSpec extends HttpClientV2Helper with GuiceOneAppPerSuite wit
 
       val date = LocalDate.now
       "must return a false result" in {
-        val template = ProcessedUploadTemplate("joe@bloggs.com", "upload-ref", date ,"a1234567")
+        val template = ProcessedUploadTemplate("joe@bloggs.com", "upload-ref", date, "a1234567")
 
         requestBuilderExecute[HttpResponse](Future.successful(HttpResponse(400, "")))
 

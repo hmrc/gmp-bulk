@@ -28,7 +28,7 @@ import uk.gov.hmrc.http.client.HttpClientV2
 import play.api.libs.ws.WSBodyWritables.writeableOf_JsValue
 
 import java.time.format.DateTimeFormatter
-import scala.concurrent.{ExecutionContext , Future}
+import scala.concurrent.{ExecutionContext, Future}
 
 case class ReceivedUploadTemplate(email: String, uploadReference: String)
 
@@ -40,10 +40,12 @@ object SendTemplatedEmailRequest {
   implicit val format: OFormat[SendTemplatedEmailRequest] = Json.format[SendTemplatedEmailRequest]
 }
 
-class EmailConnector @Inject()(http: HttpClientV2,
-                               val runModeConfiguration: Configuration,
-                               servicesConfig: ServicesConfig,
-                               implicit val ec: ExecutionContext) extends Logging {
+class EmailConnector @Inject() (
+  http:                     HttpClientV2,
+  val runModeConfiguration: Configuration,
+  servicesConfig:           ServicesConfig,
+  implicit val ec:          ExecutionContext
+) extends Logging {
 
   def sendReceivedTemplatedEmail(template: ReceivedUploadTemplate)(implicit hc: HeaderCarrier): Future[Boolean] = {
 
@@ -56,11 +58,14 @@ class EmailConnector @Inject()(http: HttpClientV2,
 
   def sendProcessedTemplatedEmail(template: ProcessedUploadTemplate)(implicit hc: HeaderCarrier): Future[Boolean] = {
 
-    val request = SendTemplatedEmailRequest(List(template.email), "gmp_bulk_upload_processed",
+    val request = SendTemplatedEmailRequest(
+      List(template.email),
+      "gmp_bulk_upload_processed",
       Map(
         "fileUploadReference" -> template.uploadReference,
-        "uploadDate" -> template.uploadDate.format(DateTimeFormatter.ofPattern("dd MMMM yyyy")),
-        "userId" -> (("*" * 5) + template.userId.takeRight(3)))
+        "uploadDate"          -> template.uploadDate.format(DateTimeFormatter.ofPattern("dd MMMM yyyy")),
+        "userId"              -> (("*" * 5) + template.userId.takeRight(3))
+      )
     )
 
     logger.info(s"[EmailConnector] Sending gmp_bulk_upload_processed email")
@@ -73,14 +78,15 @@ class EmailConnector @Inject()(http: HttpClientV2,
 
     logger.debug(s"[EmailConnector] Sending email to ${request.to.mkString(", ")}")
 
-    http.post(url"$url")
+    http
+      .post(url"$url")
       .setHeader(Seq(("Content-Type", "application/json"))*)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .map { response =>
         response.status match {
           case 202 => logger.debug(s"[EmailConnector] Email sent: ${response.body}"); true
-          case _ => logger.error(s"[EmailConnector] Email not sent: ${response.body}"); false
+          case _   => logger.error(s"[EmailConnector] Email not sent: ${response.body}"); false
         }
       }
   }

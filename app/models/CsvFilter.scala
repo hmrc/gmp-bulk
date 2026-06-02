@@ -18,17 +18,16 @@ package models
 
 case class CsvFilter(filterType: String) {
 
-  def getFileTypeName: String = {
+  def getFileTypeName: String =
     this match {
-      case CsvFilter.All => "all"
+      case CsvFilter.All        => "all"
       case CsvFilter.Successful => "total_GMP"
-      case _ => "no_total_GMP"
+      case _                    => "no_total_GMP"
     }
-  }
 }
 
 object CsvFilter {
-  val All = CsvFilter("ALL")
+  val All        = CsvFilter("ALL")
   val Successful = CsvFilter("SUCCESSFUL")
-  val Failed = CsvFilter("FAILED")
+  val Failed     = CsvFilter("FAILED")
 }

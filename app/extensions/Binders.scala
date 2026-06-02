@@ -21,11 +21,10 @@ import play.api.mvc.PathBindable
 
 object Binders {
 
-  /**
-    * Implicit path binder for CsvFilter
+  /** Implicit path binder for CsvFilter
     */
   implicit object CsvFilterBindable extends PathBindable[CsvFilter] {
-    def bind(key: String, value: String) = Right(CsvFilter(value.toUpperCase))
+    def bind(key:   String, value: String) = Right(CsvFilter(value.toUpperCase))
     def unbind(key: String, value: CsvFilter): String = value.filterType
   }
 }
