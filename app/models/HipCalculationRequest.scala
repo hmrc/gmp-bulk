@@ -19,55 +19,55 @@ package models
 import play.api.libs.json.*
 import java.time.LocalDate
 import play.api.libs.json.Reads.localDateReads
- 
 
 object EnumRevaluationRate extends Enumeration {
   type EnumRevaluationRate = Value
-  val NONE = Value("(NONE)")
-  val FIXED = Value("FIXED")
-  val LIMITED= Value("LIMITED")
-  val S148 = Value("S148")
+  val NONE    = Value("(NONE)")
+  val FIXED   = Value("FIXED")
+  val LIMITED = Value("LIMITED")
+  val S148    = Value("S148")
 
   implicit val format: Format[EnumRevaluationRate.Value] = new Format[EnumRevaluationRate.Value] {
     def writes(value: EnumRevaluationRate.Value): JsValue = JsString(value.toString)
 
     def reads(json: JsValue): JsResult[EnumRevaluationRate.Value] = json match {
       case JsString(str) => JsSuccess(EnumRevaluationRate.withName(str))
-      case _ => JsError("EnumRevaluationRate expected String")
+      case _             => JsError("EnumRevaluationRate expected String")
     }
   }
 }
 
 object EnumCalcRequestType extends Enumeration {
   type EnumCalcRequestType = Value
-  val DOL = Value("DOL Calculation")
+  val DOL         = Value("DOL Calculation")
   val Revaluation = Value("Re-valuation Calculation")
-  val PayableAge = Value("Payable Age Calculation")
-  val Survivor = Value("Survivor Calculation")
-  val SPA = Value("SPA Calculation")
+  val PayableAge  = Value("Payable Age Calculation")
+  val Survivor    = Value("Survivor Calculation")
+  val SPA         = Value("SPA Calculation")
 
   implicit val format: Format[EnumCalcRequestType.Value] = new Format[EnumCalcRequestType.Value] {
     def writes(value: EnumCalcRequestType.Value): JsValue = JsString(value.toString)
 
     def reads(json: JsValue): JsResult[EnumCalcRequestType.Value] = json match {
       case JsString(str) => JsSuccess(EnumCalcRequestType.withName(str))
-      case _ => JsError("EnumCalcRequestType expected String")
+      case _             => JsError("EnumCalcRequestType expected String")
     }
   }
 }
 
-case class HipCalculationRequest(schemeContractedOutNumber: String,
-                                 nationalInsuranceNumber: String,
-                                 surname: String,
-                                 firstForename: String,
-                                 secondForename: Option[String],
-                                 revaluationRate: Option[EnumRevaluationRate.Value],
-                                 calculationRequestType: Option[EnumCalcRequestType.Value],
-                                 revaluationDate: Option[LocalDate],
-                                 terminationDate: Option[LocalDate],
-                                 includeContributionAndEarnings: Boolean,
-                                 includeDualCalculation: Boolean)
-
+case class HipCalculationRequest(
+  schemeContractedOutNumber:      String,
+  nationalInsuranceNumber:        String,
+  surname:                        String,
+  firstForename:                  String,
+  secondForename:                 Option[String],
+  revaluationRate:                Option[EnumRevaluationRate.Value],
+  calculationRequestType:         Option[EnumCalcRequestType.Value],
+  revaluationDate:                Option[LocalDate],
+  terminationDate:                Option[LocalDate],
+  includeContributionAndEarnings: Boolean,
+  includeDualCalculation:         Boolean
+)
 
 object HipCalculationRequest {
   implicit val localDateFormat: Format[LocalDate] =

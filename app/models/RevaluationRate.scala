@@ -19,8 +19,8 @@ package models
 case class RevaluationRate(revalRate: String)
 
 object RevaluationRate {
-  val HMRC = "HMRC"
-  val S148 = "s148"
-  val FIXED = "Fixed"
+  val HMRC    = "HMRC"
+  val S148    = "s148"
+  val FIXED   = "Fixed"
   val LIMITED = "Limited"
 }

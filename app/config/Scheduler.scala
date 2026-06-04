@@ -26,72 +26,80 @@ import play.api.inject.DefaultApplicationLifecycle
 import play.api.{Application, Environment}
 import repositories.BulkCalculationMongoRepository
 import services.BulkCompletionService
-import scheduling._
+import scheduling.*
 import uk.gov.hmrc.mongo.lock.MongoLockRepository
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class Scheduler @Inject()(override val applicationLifecycle: DefaultApplicationLifecycle,
-                          actorSystem: ActorSystem,
-                          env: Environment,
-                          override val application: Application,
-                          applicationConfiguration: ApplicationConfiguration,
-                          bulkCalculationMongoRepository : BulkCalculationMongoRepository,
-                          mongoApi : MongoLockRepository, bulkCompletionService : BulkCompletionService,
-                          desConnector : DesConnector,
-                          hipConnector: HipConnector,
-                          ifConnector: IFConnector,
-                          metrics : ApplicationMetrics,appConfig: AppConfig
-                         )(implicit val ec: ExecutionContext) extends RunningOfScheduledJobs with ActorUtils {
+class Scheduler @Inject() (
+  override val applicationLifecycle: DefaultApplicationLifecycle,
+  actorSystem:                       ActorSystem,
+  env:                               Environment,
+  override val application:          Application,
+  applicationConfiguration:          ApplicationConfiguration,
+  bulkCalculationMongoRepository:    BulkCalculationMongoRepository,
+  mongoApi:                          MongoLockRepository,
+  bulkCompletionService:             BulkCompletionService,
+  desConnector:                      DesConnector,
+  hipConnector:                      HipConnector,
+  ifConnector:                       IFConnector,
+  metrics:                           ApplicationMetrics,
+  appConfig:                         AppConfig
+)(implicit val ec: ExecutionContext)
+    extends RunningOfScheduledJobs
+    with ActorUtils {
 
-  lazy val scheduledJobs: Seq[ScheduledJob] = {
-    Seq(new ExclusiveScheduledJob {
-      lazy val processingSupervisor = actorSystem.actorOf(Props(
-        classOf[ProcessingSupervisor],
-        applicationConfiguration,
-        bulkCalculationMongoRepository,
-        mongoApi,
-        desConnector,
-        ifConnector,
-        hipConnector,
-        metrics,appConfig
-      ), "processing-supervisor")
-
-      override def name: String = "BulkProcesssingService"
-
-      override def executeInMutex(implicit ec: ExecutionContext): Future[Result] = {
-        if(!env.mode.equals("Test")) {
-          processingSupervisor ! START
-          Future.successful(Result("started"))
-        }else {
-          Future.successful(Result("not running scheduled jobs"))
-        }
-      }
-
-      override def interval: FiniteDuration = applicationConfiguration.bulkProcessingInterval seconds
-
-      override def initialDelay: FiniteDuration = 1 seconds
-    },
+  lazy val scheduledJobs: Seq[ScheduledJob] =
+    Seq(
       new ExclusiveScheduledJob {
+        lazy val processingSupervisor = actorSystem.actorOf(
+          Props(
+            classOf[ProcessingSupervisor],
+            applicationConfiguration,
+            bulkCalculationMongoRepository,
+            mongoApi,
+            desConnector,
+            ifConnector,
+            hipConnector,
+            metrics,
+            appConfig
+          ),
+          "processing-supervisor"
+        )
 
-        override def executeInMutex(implicit ec: ExecutionContext): Future[Result] = {
-          if(!env.equals("Test")) {
-            bulkCompletionService.checkForComplete()
+        override def name: String = "BulkProcesssingService"
+
+        override def executeInMutex(implicit ec: ExecutionContext): Future[Result] =
+          if !env.mode.equals("Test") then {
+            processingSupervisor ! START
             Future.successful(Result("started"))
-          }else {
+          } else {
             Future.successful(Result("not running scheduled jobs"))
           }
-        }
+
+        override def interval: FiniteDuration = applicationConfiguration.bulkProcessingInterval seconds
+
+        override def initialDelay: FiniteDuration = 1 seconds
+      },
+      new ExclusiveScheduledJob {
+
+        override def executeInMutex(implicit ec: ExecutionContext): Future[Result] =
+          if !env.equals("Test") then {
+            bulkCompletionService.checkForComplete()
+            Future.successful(Result("started"))
+          } else {
+            Future.successful(Result("not running scheduled jobs"))
+          }
 
         override def name: String = "BulkCompletionService"
 
         override def interval: FiniteDuration = 1 minute
 
         override def initialDelay: FiniteDuration = 1 seconds
-      })
-  }
+      }
+    )
 
 }

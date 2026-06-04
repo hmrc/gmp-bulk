@@ -24,14 +24,16 @@ class LoggingUtilsSpec extends PlaySpec with GuiceOneAppPerSuite {
 
   "LoggingUtils.redactCalculationData" should {
     "redact nino and scon values in a flat JSON object" in {
-      val json = Json.obj(
-        "nino" -> "AA123456A",
-        "scon" -> "S1234567T",
-        "other" -> "value"
-      ).toString()
+      val json = Json
+        .obj(
+          "nino"  -> "AA123456A",
+          "scon"  -> "S1234567T",
+          "other" -> "value"
+        )
+        .toString()
 
       val redacted = LoggingUtils.redactCalculationData(json)
-      val js = Json.parse(redacted)
+      val js       = Json.parse(redacted)
 
       (js \ "nino").as[String] mustBe "AA1******"
       (js \ "scon").as[String] mustBe "S12******"
@@ -39,17 +41,19 @@ class LoggingUtilsSpec extends PlaySpec with GuiceOneAppPerSuite {
     }
 
     "redact name and surname fields in nested JSON" in {
-      val json = Json.obj(
-        "person" -> Json.obj(
-          "firstName" -> "Stan",
-          "surname" -> "Lewis",
-          "middleName" -> "Q"
+      val json = Json
+        .obj(
+          "person" -> Json.obj(
+            "firstName"  -> "Stan",
+            "surname"    -> "Lewis",
+            "middleName" -> "Q"
+          )
         )
-      ).toString()
+        .toString()
 
       val redacted = LoggingUtils.redactCalculationData(json)
-      val js = Json.parse(redacted)
-      val person = (js \ "person").as[play.api.libs.json.JsObject]
+      val js       = Json.parse(redacted)
+      val person   = (js \ "person").as[play.api.libs.json.JsObject]
 
       (person \ "firstName").as[String] mustBe "S***"
       (person \ "surname").as[String] mustBe "L****"
@@ -57,16 +61,18 @@ class LoggingUtilsSpec extends PlaySpec with GuiceOneAppPerSuite {
     }
 
     "redact fields inside arrays of objects" in {
-      val json = Json.obj(
-        "members" -> Json.arr(
-          Json.obj("nino" -> "AA111111A", "name" -> "Alice"),
-          Json.obj("nino" -> "BB222222B", "name" -> "Bob")
+      val json = Json
+        .obj(
+          "members" -> Json.arr(
+            Json.obj("nino" -> "AA111111A", "name" -> "Alice"),
+            Json.obj("nino" -> "BB222222B", "name" -> "Bob")
+          )
         )
-      ).toString()
+        .toString()
 
       val redacted = LoggingUtils.redactCalculationData(json)
-      val js = Json.parse(redacted)
-      val members = (js \ "members").as[play.api.libs.json.JsArray].value
+      val js       = Json.parse(redacted)
+      val members  = (js \ "members").as[play.api.libs.json.JsArray].value
 
       ((members(0) \ "nino").as[String]) mustBe "AA1******"
       ((members(1) \ "nino").as[String]) mustBe "BB2******"
@@ -80,24 +86,26 @@ class LoggingUtilsSpec extends PlaySpec with GuiceOneAppPerSuite {
       val redacted = LoggingUtils.redactCalculationData(nonJson)
 
       // digits replaced with '*'
-      redacted must not include ("1")
-      redacted must not include ("2")
-      redacted must include ("*")
+      redacted must not include "1"
+      redacted must not include "2"
+      redacted must include("*")
       // email redacted
-      redacted must not include ("test@example.com")
-      redacted must include ("[email]")
+      redacted must not include "test@example.com"
+      redacted must include("[email]")
       // length limited to <= 100
       redacted.length must be <= 100
     }
 
     "leave unrelated fields untouched (except pretty formatting)" in {
-      val json = Json.obj(
-        "status" -> 200,
-        "message" -> "OK"
-      ).toString()
+      val json = Json
+        .obj(
+          "status"  -> 200,
+          "message" -> "OK"
+        )
+        .toString()
 
       val redacted = LoggingUtils.redactCalculationData(json)
-      val js = Json.parse(redacted)
+      val js       = Json.parse(redacted)
 
       (js \ "status").as[Int] mustBe 200
       (js \ "message").as[String] mustBe "OK"

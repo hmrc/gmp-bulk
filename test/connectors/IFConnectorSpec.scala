@@ -16,16 +16,16 @@
 
 package connectors
 
-import com.github.tomakehurst.wiremock.client.WireMock._
+import com.github.tomakehurst.wiremock.client.WireMock.*
 import com.github.tomakehurst.wiremock.stubbing.StubMapping
 import config.ApplicationConfiguration
 import helpers.RandomNino
 import metrics.ApplicationMetrics
 import models.ValidCalculationRequest
 import org.mockito.{ArgumentMatchers, Mockito}
-import org.scalatest._
+import org.scalatest.*
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
-import play.api.test.Helpers._
+import play.api.test.Helpers.*
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, SessionId, UpstreamErrorResponse}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
@@ -34,16 +34,16 @@ import utils.WireMockHelper
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.concurrent.{ExecutionContext, Future}
 
 class IFConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite with WireMockHelper with BeforeAndAfter {
 
-  private val injector = app.injector
-  private val mockMetrics = mock[ApplicationMetrics]
-  private val http = injector.instanceOf[HttpClientV2]
-  private val servicesConfig = injector.instanceOf[ServicesConfig]
-  private val applicationConfig = injector.instanceOf[ApplicationConfiguration]
+  private val injector                    = app.injector
+  private val mockMetrics                 = mock[ApplicationMetrics]
+  private val http                        = injector.instanceOf[HttpClientV2]
+  private val servicesConfig              = injector.instanceOf[ServicesConfig]
+  private val applicationConfig           = injector.instanceOf[ApplicationConfiguration]
   private val NGINX_CLIENT_CLOSED_REQUEST = 499
 
   override def beforeEach(): Unit = {
@@ -51,18 +51,18 @@ class IFConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite wit
     Mockito.reset(mockMetrics)
   }
 
-  def stubServiceGet(url: String, responseStatus: Int, responseBody: String, queryParam: (String, String)*): StubMapping = {
-    server.stubFor(get(urlPathEqualTo(url))
-      .withQueryParams(queryParam.map(qp => (qp._1, equalTo(qp._2))).toMap.asJava)
-      .willReturn(
-        aResponse()
-          .withStatus(responseStatus)
-          .withBody(responseBody)
-      )
+  def stubServiceGet(url: String, responseStatus: Int, responseBody: String, queryParam: (String, String)*): StubMapping =
+    server.stubFor(
+      get(urlPathEqualTo(url))
+        .withQueryParams(queryParam.map(qp => (qp._1, equalTo(qp._2))).toMap.asJava)
+        .willReturn(
+          aResponse()
+            .withStatus(responseStatus)
+            .withBody(responseBody)
+        )
     )
-  }
 
-  class SUT(httpC:HttpClientV2 = http) extends IFConnector(httpC, servicesConfig, mockMetrics, applicationConfig, ExecutionContext.global) {
+  class SUT(httpC: HttpClientV2 = http) extends IFConnector(httpC, servicesConfig, mockMetrics, applicationConfig, ExecutionContext.global) {
     override lazy val serviceURL: String = "http://localhost:" + server.port()
   }
 
@@ -96,7 +96,7 @@ class IFConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite wit
 
       "return a calculation request" in new SUT {
         val url = s"/pensions/individuals/gmp/scon/S/1234567/T/nino/$nino/surname/BIX/firstname/B/calculation/"
-        stubServiceGet(url, OK, calcResponseJson, ("request_earnings" -> "1"), ("calctype" -> "0"))
+        stubServiceGet(url, OK, calcResponseJson, "request_earnings" -> "1", "calctype" -> "0")
 
         val result = await(calculate(ValidCalculationRequest("S1234567T", nino, "Bixby", "Bill", None, Some(0), None, Some(1), None, None)))
 
@@ -106,22 +106,21 @@ class IFConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite wit
 
       "return a encoded characters in URLs correctly" in new SUT {
         val encodedSurname = URLEncoder.encode("O'N", StandardCharsets.UTF_8.toString)
-        val url = s"/pensions/individuals/gmp/scon/S/1234567/T/nino/$nino/surname/$encodedSurname/firstname/B/calculation/"
-        stubServiceGet(url, OK, calcResponseJson, ("request_earnings" -> "1"), ("calctype" -> "0"))
+        val url            = s"/pensions/individuals/gmp/scon/S/1234567/T/nino/$nino/surname/$encodedSurname/firstname/B/calculation/"
+        stubServiceGet(url, OK, calcResponseJson, "request_earnings" -> "1", "calctype" -> "0")
 
         val request = ValidCalculationRequest("S1234567T", nino, "O'Neill", "Bill", None, Some(0), None, Some(1), None, None)
-        val result = await(calculate(request))
+        val result  = await(calculate(request))
 
         result.npsLgmpcalc.length must be(1)
         Mockito.verify(mockMetrics).registerSuccessfulRequest()
       }
 
-
       "return not found when scon does not exist" in new SUT {
         val request = ValidCalculationRequest("S1234567T", nino, "Bixby", "Bill", None, Some(0), None, Some(1), None, None)
 
         val url = s"/pensions/individuals/gmp/scon/S/1234567/T/nino/$nino/surname/BIX/firstname/B/calculation/"
-        stubServiceGet(url, NOT_FOUND, "", ("request_earnings" -> "1"), ("calctype" -> "0"))
+        stubServiceGet(url, NOT_FOUND, "", "request_earnings" -> "1", "calctype" -> "0")
 
         intercept[UpstreamErrorResponse] {
           await(calculate(request))
@@ -132,7 +131,7 @@ class IFConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite wit
         requestBuilderExecute[HttpResponse](Future.successful(HttpResponse(BAD_REQUEST, "400")))
 
         val url = s"/pensions/individuals/gmp/scon/S/1401234/Q/nino/$nino/surname/SMI/firstname/B/calculation/"
-        stubServiceGet(url, BAD_REQUEST, "Bad request", ("request_earnings" -> "1"))
+        stubServiceGet(url, BAD_REQUEST, "Bad request", "request_earnings" -> "1")
 
         val result = calculate(ValidCalculationRequest("S1401234Q", nino, "Smith", "Bill", None, None, None, None, None, None))
 
@@ -143,38 +142,36 @@ class IFConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite wit
       }
 
       val errorCodes4xx = List(TOO_MANY_REQUESTS, NGINX_CLIENT_CLOSED_REQUEST)
-      for (errorCode <- errorCodes4xx) {
+      for errorCode <- errorCodes4xx do
         s"return a BreakerException exception when $errorCode returned from DES" in new SUT {
           val request = ValidCalculationRequest("S1401234Q", RandomNino.generate, "Smith", "Bill", None, None, None, None, None, None)
 
           val url = s"""/pensions/individuals/gmp/scon/S/1401234/Q/nino/${request.nino.toUpperCase}/surname/SMI/firstname/B/calculation/"""
-          stubServiceGet(url, errorCode, "", ("request_earnings" -> "1"))
+          stubServiceGet(url, errorCode, "", "request_earnings" -> "1")
 
           intercept[BreakerException] {
             await(calculate(request))
           }
           Mockito.verify(mockMetrics).registerFailedRequest()
         }
-      }
 
       val errorCodes5xx = List(BAD_GATEWAY, SERVICE_UNAVAILABLE, GATEWAY_TIMEOUT, INTERNAL_SERVER_ERROR)
-      for (errorCode <- errorCodes5xx) {
+      for errorCode <- errorCodes5xx do
         s"return a UpstreamErrorResponse exception when $errorCode returned from DES" in new SUT {
           val request = ValidCalculationRequest("S1401234Q", RandomNino.generate, "Smith", "Bill", None, None, None, None, None, None)
 
           val url = s"""/pensions/individuals/gmp/scon/S/1401234/Q/nino/${request.nino.toUpperCase}/surname/SMI/firstname/B/calculation/"""
-          stubServiceGet(url, errorCode, "", ("request_earnings" -> "1"))
+          stubServiceGet(url, errorCode, "", "request_earnings" -> "1")
 
           intercept[UpstreamErrorResponse] {
             await(calculate(request))
           }
           Mockito.verify(mockMetrics).registerFailedRequest()
         }
-      }
 
       "return a success when 422 returned" in new SUT {
         val url = s"""/pensions/individuals/gmp/scon/S/1401234/Q/nino/$nino/surname/SMI/firstname/B/calculation/"""
-        stubServiceGet(url, UNPROCESSABLE_ENTITY, calcResponseJson, ("request_earnings" -> "1"), ("calctype" -> "0"))
+        stubServiceGet(url, UNPROCESSABLE_ENTITY, calcResponseJson, "request_earnings" -> "1", "calctype" -> "0")
 
         val result = await(calculate(ValidCalculationRequest("S1401234Q", nino, "Smith", "Bill", None, Some(0), None, None, None, None)))
 

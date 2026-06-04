@@ -21,9 +21,9 @@ import config.{AppConfig, ApplicationConfiguration}
 import connectors.{DesConnector, DesGetHiddenRecordResponse, HipConnector, IFConnector}
 import metrics.ApplicationMetrics
 import models.{CalculationResponse, GmpBulkCalculationResponse, HipCalculationFailuresResponse, HipCalculationRequest, HipCalculationResponse, ProcessReadyCalculationRequest, ValidCalculationRequest}
-import org.apache.pekko.actor._
+import org.apache.pekko.actor.*
 import play.api.Logging
-import play.api.http.Status._
+import play.api.http.Status.*
 import repositories.BulkCalculationMongoRepository
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import java.util.concurrent.TimeUnit
@@ -31,14 +31,14 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 trait CalculationRequestActorComponent {
-  val desConnector: DesConnector
-  val ifConnector: IFConnector
-  val hipConnector: HipConnector
-  val repository: BulkCalculationMongoRepository
-  val metrics: ApplicationMetrics
+  val desConnector:      DesConnector
+  val ifConnector:       IFConnector
+  val hipConnector:      HipConnector
+  val repository:        BulkCalculationMongoRepository
+  val metrics:           ApplicationMetrics
   val applicationConfig: ApplicationConfiguration
-  val appConfig: AppConfig
-  implicit val ec: ExecutionContext
+  val appConfig:         AppConfig
+  implicit val ec:       ExecutionContext
 }
 
 class CalculationRequestActor extends Actor with ActorUtils with Logging {
@@ -48,11 +48,11 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
   override def receive: Receive = {
     case request: ProcessReadyCalculationRequest =>
       val origSender = sender()
-      val startTime = System.currentTimeMillis()
+      val startTime  = System.currentTimeMillis()
 
       val backend: String =
-        if (appConfig.isIfsEnabled) "IF"
-        else if (appConfig.isHipEnabled) "HIP"
+        if appConfig.isIfsEnabled then "IF"
+        else if appConfig.isHipEnabled then "HIP"
         else "DES"
 
       val processingFuture = desConnector.getPersonDetails(request.validCalculationRequest.get.nino).flatMap {
@@ -132,11 +132,11 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
       sender() ! org.apache.pekko.actor.Status.Failure(new IllegalArgumentException("Unsupported message type"))
   }
 
-  private def callBackend(request: ValidCalculationRequest): Future[Any] = {
+  private def callBackend(request: ValidCalculationRequest): Future[Any] =
     Try {
-      if (appConfig.isIfsEnabled) {
+      if appConfig.isIfsEnabled then {
         ifConnector.calculate(request)
-      } else if (appConfig.isHipEnabled) {
+      } else if appConfig.isHipEnabled then {
         val hipRequest = HipCalculationRequest.from(request)
         hipConnector.calculateOutcome(userId = "system", hipRequest)(HeaderCarrier())
       } else {
@@ -144,35 +144,35 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
       }
     } match {
       case Success(future) => future
-      case Failure(e) => Future.failed(e) // Promote synchronous error to a failed Future
+      case Failure(e)      => Future.failed(e) // Promote synchronous error to a failed Future
     }
-  }
 
-  private def createErrorResponse(status: Int): GmpBulkCalculationResponse = {
+  private def createErrorResponse(status: Int): GmpBulkCalculationResponse =
     GmpBulkCalculationResponse(List(), status, None, None, None, containsErrors = true)
-  }
 
-  private def insertAndReply(bulkId: String, lineId: Int, response: GmpBulkCalculationResponse, startTime: Long, recipient: ActorRef): Unit = {
-    repository.insertResponseByReference(bulkId, lineId, response).map { result =>
-      metrics.processRequest(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
-      logger.debug(s"[CalculationRequestActor] Inserted response for bulkId: $bulkId, lineId: $lineId. Result: $result")
-      recipient ! result
+  private def insertAndReply(bulkId: String, lineId: Int, response: GmpBulkCalculationResponse, startTime: Long, recipient: ActorRef): Unit =
+    repository
+      .insertResponseByReference(bulkId, lineId, response)
+      .map { result =>
+        metrics.processRequest(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS)
+        logger.debug(s"[CalculationRequestActor] Inserted response for bulkId: $bulkId, lineId: $lineId. Result: $result")
+        recipient ! result
 
-    }.recover {
-      case e =>
+      }
+      .recover { case e =>
         logger.error(s"[CalculationRequestActor] Failed to insert response for bulkId: $bulkId, lineId: $lineId. Error: $e", e)
         recipient ! org.apache.pekko.actor.Status.Failure(e) // Notify supervisor of DB failure
-    }
-  }
+      }
 }
 
-class DefaultCalculationRequestActor @Inject()(override val repository : BulkCalculationMongoRepository,
-                                               override val desConnector : DesConnector,
-                                               override val ifConnector: IFConnector,
-                                               override val hipConnector: HipConnector,
-                                               override val metrics : ApplicationMetrics,
-                                               override val applicationConfig: ApplicationConfiguration,
-                                               override val appConfig: AppConfig,
-                                               override val ec: ExecutionContext
-                                              ) extends CalculationRequestActor with CalculationRequestActorComponent {
-}
+class DefaultCalculationRequestActor @Inject() (
+  override val repository:        BulkCalculationMongoRepository,
+  override val desConnector:      DesConnector,
+  override val ifConnector:       IFConnector,
+  override val hipConnector:      HipConnector,
+  override val metrics:           ApplicationMetrics,
+  override val applicationConfig: ApplicationConfiguration,
+  override val appConfig:         AppConfig,
+  override val ec:                ExecutionContext
+) extends CalculationRequestActor
+    with CalculationRequestActorComponent {}

@@ -17,7 +17,7 @@
 package actors
 
 import actors.Throttler.{RateInt, SetTarget}
-import org.apache.pekko.actor._
+import org.apache.pekko.actor.*
 import config.{AppConfig, ApplicationConfiguration}
 import connectors.{DesConnector, HipConnector, IFConnector}
 import metrics.ApplicationMetrics
@@ -26,41 +26,48 @@ import repositories.{BulkCalculationMongoRepository, BulkCalculationRepository}
 import uk.gov.hmrc.mongo.lock.{LockRepository, MongoLockRepository, TimePeriodLockService}
 
 import javax.inject.Singleton
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.annotation.nowarn
-
 
 @nowarn
 @Singleton
-class ProcessingSupervisor (applicationConfig: ApplicationConfiguration,
-                                     bulkCalculationMongoRepository : BulkCalculationMongoRepository,
-                                     val mongoLockRepository: MongoLockRepository,
-                                     desConnector : DesConnector,
-                                     ifConnector: IFConnector,
-                                     hipConnector: HipConnector,
-                                     metrics : ApplicationMetrics, appConfig: AppConfig)
-  extends Actor with ActorUtils with TimePeriodLockService with Logging {
+class ProcessingSupervisor(
+  applicationConfig:              ApplicationConfiguration,
+  bulkCalculationMongoRepository: BulkCalculationMongoRepository,
+  val mongoLockRepository:        MongoLockRepository,
+  desConnector:                   DesConnector,
+  ifConnector:                    IFConnector,
+  hipConnector:                   HipConnector,
+  metrics:                        ApplicationMetrics,
+  appConfig:                      AppConfig
+) extends Actor
+    with ActorUtils
+    with TimePeriodLockService
+    with Logging {
 
   override val lockRepository: LockRepository = mongoLockRepository
-  override val lockId: String = "bulkprocessing"
-  override val ttl: Duration = (2 * applicationConfig.bulkProcessingInterval).seconds
+  override val lockId:         String         = "bulkprocessing"
+  override val ttl:            Duration       = (2 * applicationConfig.bulkProcessingInterval).seconds
 
   // $COVERAGE-OFF$
-  lazy val repository: BulkCalculationRepository = bulkCalculationMongoRepository
-  lazy val requestActor: ActorRef = context.actorOf(Props(
-    classOf[DefaultCalculationRequestActor],
-    bulkCalculationMongoRepository,
-    desConnector,
-    ifConnector,
-    hipConnector,
-    metrics,
-    applicationConfig,
-    appConfig,
-    context.dispatcher
-  ), "calculation-requester")
+  lazy val repository:   BulkCalculationRepository = bulkCalculationMongoRepository
+  lazy val requestActor: ActorRef                  = context.actorOf(
+    Props(
+      classOf[DefaultCalculationRequestActor],
+      bulkCalculationMongoRepository,
+      desConnector,
+      ifConnector,
+      hipConnector,
+      metrics,
+      applicationConfig,
+      appConfig,
+      context.dispatcher
+    ),
+    "calculation-requester"
+  )
 
-  lazy val throttler: ActorRef = context.actorOf(Props(classOf[TimerBasedThrottler],
-    applicationConfig.bulkProcessingTps msgsPer 1.seconds), "throttler")
+  lazy val throttler: ActorRef =
+    context.actorOf(Props(classOf[TimerBasedThrottler], applicationConfig.bulkProcessingTps msgsPer 1.seconds), "throttler")
 
   throttler ! SetTarget(Some(requestActor))
 
@@ -81,9 +88,7 @@ class ProcessingSupervisor (applicationConfig: ApplicationConfiguration,
 
             case Some(requests) if requests.nonEmpty =>
               logger.info(s"[ProcessingSupervisor][receive] took ${requests.size} request/s")
-              for (request <- requests.take(applicationConfig.bulkProcessingBatchSize)) {
-                throttler ! request
-              }
+              for request <- requests.take(applicationConfig.bulkProcessingBatchSize) do throttler ! request
               throttler ! STOP
 
             case _ =>

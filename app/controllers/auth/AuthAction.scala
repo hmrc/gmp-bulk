@@ -18,29 +18,28 @@ package controllers.auth
 
 import com.google.inject.Inject
 import play.api.http.Status.UNAUTHORIZED
-import play.api.mvc.Results._
-import play.api.mvc._
-import uk.gov.hmrc.auth.core._
+import play.api.mvc.Results.*
+import play.api.mvc.*
+import uk.gov.hmrc.auth.core.*
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.http.HeaderCarrierConverter
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class AuthAction @Inject()(override val authConnector: AuthConnector,
-                           controllerComponents: ControllerComponents)
-  extends ActionBuilder[Request, AnyContent] with AuthorisedFunctions {
+class AuthAction @Inject() (override val authConnector: AuthConnector, controllerComponents: ControllerComponents)
+    extends ActionBuilder[Request, AnyContent]
+    with AuthorisedFunctions {
 
-  implicit val executionContext: ExecutionContext = controllerComponents.executionContext
-  val parser: BodyParser[AnyContent] = controllerComponents.parsers.defaultBodyParser
+  implicit val executionContext: ExecutionContext       = controllerComponents.executionContext
+  val parser:                    BodyParser[AnyContent] = controllerComponents.parsers.defaultBodyParser
 
   override def invokeBlock[A](request: Request[A], block: Request[A] => Future[Result]): Future[Result] = {
     implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
 
     authorised(ConfidenceLevel.L50) {
       block(request)
-    } recover {
-      case _: NoActiveSession =>
-        Status(UNAUTHORIZED)
+    } recover { case _: NoActiveSession =>
+      Status(UNAUTHORIZED)
     }
   }
 }

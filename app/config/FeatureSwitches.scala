@@ -20,36 +20,31 @@ import play.api.Configuration
 
 import javax.inject.{Inject, Singleton}
 
-/**
- * Represents a single feature toggle.
- */
+/** Represents a single feature toggle.
+  */
 case class FeatureSwitch(name: String, enabled: Boolean)
 
-/**
- * Loads all GMP-related feature switches from configuration.
- */
+/** Loads all GMP-related feature switches from configuration.
+  */
 @Singleton
-class FeatureSwitches @Inject()(config: Configuration) {
+class FeatureSwitches @Inject() (config: Configuration) {
 
   private val prefix = "feature"
 
-  /**
-   * Fetches the value of a given feature switch key from config.
-   */
+  /** Fetches the value of a given feature switch key from config.
+    */
   private def isEnabled(name: String): Boolean =
     config.getOptional[Boolean](s"$prefix.$name").getOrElse(false)
 
-  /** Feature toggles **/
+  /** Feature toggles * */
   val hipIntegration: FeatureSwitch = FeatureSwitch("hipIntegration", isEnabled("hipIntegration"))
-  val ifsMigration: FeatureSwitch   = FeatureSwitch("ifsMigration", isEnabled("ifMigration"))
+  val ifsMigration:   FeatureSwitch = FeatureSwitch("ifsMigration", isEnabled("ifMigration"))
 
-  /**
-   * All known switches for inspection or logging.
-   */
+  /** All known switches for inspection or logging.
+    */
   val all: Seq[FeatureSwitch] = Seq(hipIntegration, ifsMigration)
 
-  /**
-   * Look up a switch by name.
-   */
+  /** Look up a switch by name.
+    */
   def byName(name: String): Option[FeatureSwitch] = all.find(_.name == name)
 }

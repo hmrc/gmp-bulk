@@ -42,55 +42,55 @@ import scala.annotation.nowarn
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class HipConnector @Inject()(
-  appConfig: AppConfig,
-  metrics: ApplicationMetrics,
-  http: HttpClientV2,
-  auditConnector: AuditConnector,
+class HipConnector @Inject() (
+  appConfig:         AppConfig,
+  metrics:           ApplicationMetrics,
+  http:              HttpClientV2,
+  auditConnector:    AuditConnector,
   applicationConfig: ApplicationConfiguration
-)(implicit ec: ExecutionContext) extends Logging with UsingCircuitBreaker {
+)(implicit ec: ExecutionContext)
+    extends Logging
+    with UsingCircuitBreaker {
 
   private val hipBaseUrl: String = appConfig.hipUrl
-  private val calcURI = s"$hipBaseUrl/ni/gmp/calculation"
+  private val calcURI                         = s"$hipBaseUrl/ni/gmp/calculation"
   @nowarn private val MaxBodyLengthForLogging = 300
   class BreakerException extends Exception
 
   private def buildHeadersV1: Seq[(String, String)] =
     Seq(
       Constants.OriginatorIdKey -> appConfig.originatorIdValue,
-      "correlationId" -> getCorrelationId,
-      "Authorization" -> s"Basic ${appConfig.hipAuthorisationToken}",
+      "correlationId"           -> getCorrelationId,
+      "Authorization"           -> s"Basic ${appConfig.hipAuthorisationToken}",
       appConfig.hipEnvironmentHeader,
-      "X-Originating-System" -> Constants.XOriginatingSystemHeader,
-      "X-Receipt-Date" -> DateTimeFormatter.ISO_INSTANT.format(Instant.now().atOffset(ZoneOffset.UTC)),
+      "X-Originating-System"  -> Constants.XOriginatingSystemHeader,
+      "X-Receipt-Date"        -> DateTimeFormatter.ISO_INSTANT.format(Instant.now().atOffset(ZoneOffset.UTC)),
       "X-Transmitting-System" -> Constants.XTransmittingSystemHeader
     )
 
   private def getCorrelationId: String = UUID.randomUUID().toString
 
-  override protected def circuitBreakerConfig: CircuitBreakerConfig = {
+  override protected def circuitBreakerConfig: CircuitBreakerConfig =
     CircuitBreakerConfig(
       "HipConnector",
       applicationConfig.numberOfCallsToTriggerStateChange,
       applicationConfig.unavailablePeriodDuration,
       applicationConfig.unstablePeriodDuration
     )
-  }
 
-  
-
-  override protected def breakOnException(t: Throwable): Boolean = {
+  override protected def breakOnException(t: Throwable): Boolean =
     t match {
-      case _: BreakerException => true
-      case _: BadGatewayException => true
-      case _: GatewayTimeoutException => true
+      case _: BreakerException                                                   => true
+      case _: BadGatewayException                                                => true
+      case _: GatewayTimeoutException                                            => true
       case e: UpstreamErrorResponse if e.statusCode >= 500 && e.statusCode < 600 => true
       case _ => false
     }
-  }
 
   // Returns Right(success) for 200 and Left(failures) for 422
-  def calculateOutcome(userId: String, request: HipCalculationRequest)(implicit hc: HeaderCarrier): Future[Either[HipCalculationFailuresResponse, HipCalculationResponse]] = {
+  def calculateOutcome(userId: String, request: HipCalculationRequest)(implicit
+    hc: HeaderCarrier
+  ): Future[Either[HipCalculationFailuresResponse, HipCalculationResponse]] = {
     doAudit(
       "gmpCalculation",
       userId,
@@ -101,10 +101,11 @@ class HipConnector @Inject()(
     )
 
     val startTime = System.currentTimeMillis()
-    val headers = buildHeadersV1
+    val headers   = buildHeadersV1
 
     withCircuitBreaker(
-      http.post(url"$calcURI")
+      http
+        .post(url"$calcURI")
         .setHeader(headers*)
         .withBody(Json.toJson(request))
         .execute[HttpResponse]
@@ -148,10 +149,11 @@ class HipConnector @Inject()(
             throw UpstreamErrorResponse(detailedMsg, BAD_GATEWAY, BAD_GATEWAY)
         }
       case None =>
-        val contentType = response.headers.get("Content-Type").flatMap(_.headOption).getOrElse("unknown")
+        val contentType   = response.headers.get("Content-Type").flatMap(_.headOption).getOrElse("unknown")
         val correlationId = response.headers.get("correlationId").flatMap(_.headOption).getOrElse("n/a")
-        val bodyLen = Option(response.body).map(_.length).getOrElse(0)
-        val detailedMsg = s"HIP returned non-JSON body. Status: ${response.status}, correlationId: $correlationId, Content-Type: $contentType, Body length: $bodyLen (omitted)"
+        val bodyLen       = Option(response.body).map(_.length).getOrElse(0)
+        val detailedMsg   =
+          s"HIP returned non-JSON body. Status: ${response.status}, correlationId: $correlationId, Content-Type: $contentType, Body length: $bodyLen (omitted)"
         logger.error(s"[HipConnector][calculate] $detailedMsg")
         metrics.hipRegisterFailedRequest()
         throw UpstreamErrorResponse(detailedMsg, BAD_GATEWAY, BAD_GATEWAY)
@@ -164,32 +166,33 @@ class HipConnector @Inject()(
       case Some(js) =>
         js.validate[HipCalculationFailuresResponse] match {
           case JsSuccess(value, _) => value
-          case JsError(errors) =>
+          case JsError(errors)     =>
             val errorFields = errors.map(_._1.toString).mkString(", ")
             val detailedMsg = s"HIP 422 returned invalid JSON. Failed to parse fields: $errorFields"
             logger.error(s"[HipConnector][calculate] $detailedMsg")
             throw UpstreamErrorResponse(detailedMsg, BAD_GATEWAY, BAD_GATEWAY)
         }
       case None =>
-        val contentType = response.headers.get("Content-Type").flatMap(_.headOption).getOrElse("unknown")
+        val contentType   = response.headers.get("Content-Type").flatMap(_.headOption).getOrElse("unknown")
         val correlationId = response.headers.get("correlationId").flatMap(_.headOption).getOrElse("n/a")
-        val bodyLen = Option(response.body).map(_.length).getOrElse(0)
-        val detailedMsg = s"HIP returned non-JSON body with 422. correlationId: $correlationId, Content-Type: $contentType, Body length: $bodyLen (omitted)"
+        val bodyLen       = Option(response.body).map(_.length).getOrElse(0)
+        val detailedMsg   =
+          s"HIP returned non-JSON body with 422. correlationId: $correlationId, Content-Type: $contentType, Body length: $bodyLen (omitted)"
         logger.error(s"[HipConnector][calculate] $detailedMsg")
         throw UpstreamErrorResponse(detailedMsg, BAD_GATEWAY, BAD_GATEWAY)
     }
   }
 
   private def toUpstreamError(response: HttpResponse): UpstreamErrorResponse = {
-    val status = response.status
+    val status              = response.status
     val (message, reportAs) = status match {
-      case BAD_REQUEST => ("Bad Request", BAD_REQUEST)
-      case FORBIDDEN   => ("Forbidden", FORBIDDEN)
-      case NOT_FOUND   => ("Not Found", NOT_FOUND)
-      case TOO_MANY_REQUESTS => 
+      case BAD_REQUEST       => ("Bad Request", BAD_REQUEST)
+      case FORBIDDEN         => ("Forbidden", FORBIDDEN)
+      case NOT_FOUND         => ("Not Found", NOT_FOUND)
+      case TOO_MANY_REQUESTS =>
         logger.warn(s"[HipConnector] Rate limited by HIP service")
         throw new BreakerException
-      case status if status >= 500 && status < 600 => 
+      case status if status >= 500 && status < 600 =>
         logger.error(s"[HipConnector] HIP service error: ${response.body.take(500)}")
         (s"Unexpected error (Status: $status)", INTERNAL_SERVER_ERROR)
       case s => (s"Client error (Status: $s)", s)
@@ -203,7 +206,7 @@ class HipConnector @Inject()(
     )
 
     // For server errors, throw BreakerException to trigger circuit breaker
-    if (status >= 500 && status < 600) {
+    if status >= 500 && status < 600 then {
       logger.error(s"[HipConnector] Failing fast with circuit breaker due to HTTP $status")
       throw new BreakerException
     }
@@ -212,32 +215,35 @@ class HipConnector @Inject()(
   }
 
   private def doAudit(
-    auditTag: String,
-    userId: String,
-    scon: String,
-    nino: Option[String],
-    surname: Option[String],
+    auditTag:      String,
+    userId:        String,
+    scon:          String,
+    nino:          Option[String],
+    surname:       Option[String],
     firstForename: Option[String]
   )(implicit hc: HeaderCarrier): Unit = {
     val correlationId = hc.requestId.map(_.value).orElse(hc.sessionId.map(_.value)).getOrElse("unknown")
     val auditDetails: Map[String, String] = Map(
-      "userId" -> userId,
-      "scon" -> scon,
-      "nino" -> nino.getOrElse(""),
-      "firstName" -> firstForename.getOrElse(""),
-      "surname" -> surname.getOrElse(""),
+      "userId"        -> userId,
+      "scon"          -> scon,
+      "nino"          -> nino.getOrElse(""),
+      "firstName"     -> firstForename.getOrElse(""),
+      "surname"       -> surname.getOrElse(""),
       "correlationId" -> correlationId
     )
 
-    auditConnector.sendEvent(
-      DataEvent(
-        auditSource = "gmp-bulk",
-        auditType = EventTypes.Succeeded,
-        tags = hc.toAuditTags(auditTag, "N/A"),
-        detail = hc.toAuditDetails() ++ auditDetails
+    auditConnector
+      .sendEvent(
+        DataEvent(
+          auditSource = "gmp-bulk",
+          auditType = EventTypes.Succeeded,
+          tags = hc.toAuditTags(auditTag, "N/A"),
+          detail = hc.toAuditDetails() ++ auditDetails
+        )
       )
-    ).failed.foreach {
-      case e: Throwable => logger.warn("[HipConnector][doAudit] Audit failed", e)
-    }
+      .failed
+      .foreach { case e: Throwable =>
+        logger.warn("[HipConnector][doAudit] Audit failed", e)
+      }
   }
 }

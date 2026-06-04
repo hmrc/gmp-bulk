@@ -17,6 +17,6 @@
 package actors
 
 trait ActorUtils {
-    val START = "start"
-    val STOP = "stop"
+  val START = "start"
+  val STOP  = "stop"
 }

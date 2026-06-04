@@ -19,50 +19,58 @@ package events
 import models.ProcessedBulkCalculationRequest
 import uk.gov.hmrc.http.HeaderCarrier
 
-class BulkEvent(userId: String,
-                successfulCount: Int,
-                failedValidationCount: Int,
-                failedNPSCount: Int,
-                rowCount: Int,
-                errorCodes: List[Int],
-                scons: List[String],
-                dualCalcs: List[Boolean],
-                calcTypes: List[Int]) (implicit hc: HeaderCarrier)
-  extends GmpBulkBusinessEvent("GMP-Bulk-Results",
-    Map("userId" -> userId.toString,
-        "calcCount" -> (successfulCount + failedNPSCount).toString,
-        "successfulCount" -> successfulCount.toString,
+class BulkEvent(
+  userId:                String,
+  successfulCount:       Int,
+  failedValidationCount: Int,
+  failedNPSCount:        Int,
+  rowCount:              Int,
+  errorCodes:            List[Int],
+  scons:                 List[String],
+  dualCalcs:             List[Boolean],
+  calcTypes:             List[Int]
+)(implicit hc: HeaderCarrier)
+    extends GmpBulkBusinessEvent(
+      "GMP-Bulk-Results",
+      Map(
+        "userId"                -> userId.toString,
+        "calcCount"             -> (successfulCount + failedNPSCount).toString,
+        "successfulCount"       -> successfulCount.toString,
         "failedValidationCount" -> failedValidationCount.toString,
-        "failedNPSCount" -> failedNPSCount.toString,
-        "rowCount" -> rowCount.toString,
-        "errorCodes" -> EventHelpers.createMultiEntry(errorCodes),
-        "scons" -> EventHelpers.createMultiEntry(scons),
-        "dualCalcs" -> EventHelpers.createMultiEntry(dualCalcs),
-        "calcTypes" -> EventHelpers.createMultiEntry(calcTypes)
-    ))
+        "failedNPSCount"        -> failedNPSCount.toString,
+        "rowCount"              -> rowCount.toString,
+        "errorCodes"            -> EventHelpers.createMultiEntry(errorCodes),
+        "scons"                 -> EventHelpers.createMultiEntry(scons),
+        "dualCalcs"             -> EventHelpers.createMultiEntry(dualCalcs),
+        "calcTypes"             -> EventHelpers.createMultiEntry(calcTypes)
+      )
+    )
 
 object BulkEvent {
-    def apply(request: ProcessedBulkCalculationRequest)(implicit hc: HeaderCarrier) = {
-        val totalRequests = request.calculationRequests.size
-        val failedRequests = request.failedRequestCount
+  def apply(request: ProcessedBulkCalculationRequest)(implicit hc: HeaderCarrier) = {
+    val totalRequests  = request.calculationRequests.size
+    val failedRequests = request.failedRequestCount
 
-        new BulkEvent(
-            userId = request.userId,
-            successfulCount = totalRequests - failedRequests,
-            failedValidationCount = request.calculationRequests.count(_.validationErrors.isDefined),
-            failedNPSCount = request.calculationRequests.count(_.hasNPSErrors),
-            rowCount = totalRequests,
-            errorCodes = request.calculationRequests.filter(_.calculationResponse.isDefined).flatMap(_.calculationResponse.get.errorCodes),
-            scons = request.calculationRequests.filter(_.validCalculationRequest.isDefined)
-              .filter(_.calculationResponse.isDefined)
-              .flatMap(_.validCalculationRequest.map(_.scon)),
-            dualCalcs = request.calculationRequests.collect {
-                case a if a.isDualCalOne => true
-                case b if b.isDualCalZero => false
-            },
-            calcTypes = request.calculationRequests.filter(_.validCalculationRequest.isDefined)
-              .filter(_.calculationResponse.isDefined)
-              .flatMap(_.validCalculationRequest.map(_.calctype.get)))
-    }
+    new BulkEvent(
+      userId = request.userId,
+      successfulCount = totalRequests - failedRequests,
+      failedValidationCount = request.calculationRequests.count(_.validationErrors.isDefined),
+      failedNPSCount = request.calculationRequests.count(_.hasNPSErrors),
+      rowCount = totalRequests,
+      errorCodes = request.calculationRequests.filter(_.calculationResponse.isDefined).flatMap(_.calculationResponse.get.errorCodes),
+      scons = request.calculationRequests
+        .filter(_.validCalculationRequest.isDefined)
+        .filter(_.calculationResponse.isDefined)
+        .flatMap(_.validCalculationRequest.map(_.scon)),
+      dualCalcs = request.calculationRequests.collect {
+        case a if a.isDualCalOne  => true
+        case b if b.isDualCalZero => false
+      },
+      calcTypes = request.calculationRequests
+        .filter(_.validCalculationRequest.isDefined)
+        .filter(_.calculationResponse.isDefined)
+        .flatMap(_.validCalculationRequest.map(_.calctype.get))
+    )
+  }
 
 }

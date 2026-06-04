@@ -30,8 +30,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait HttpClientV2Helper extends PlaySpec with MockitoSugar with ScalaFutures {
 
-
-  val mockHttp: HttpClientV2 = mock[HttpClientV2]
+  val mockHttp:       HttpClientV2   = mock[HttpClientV2]
   val requestBuilder: RequestBuilder = mock[RequestBuilder]
   val requestCaptor = ArgumentCaptor.forClass(classOf[SendTemplatedEmailRequest])
   val jsonCaptor: ArgumentCaptor[JsValue] = ArgumentCaptor.forClass(classOf[JsValue])
@@ -43,13 +42,13 @@ trait HttpClientV2Helper extends PlaySpec with MockitoSugar with ScalaFutures {
   when(requestBuilder.transform(any())).thenReturn(requestBuilder)
   when(requestBuilder.setHeader(any())).thenReturn(requestBuilder)
   when(requestBuilder.withBody(any[JsValue])(using ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(requestBuilder)
-  when(requestBuilder.withBody(requestCaptor.capture())(using ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(requestBuilder)
-  when(requestBuilder.withBody(jsonCaptor.capture())(using ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(requestBuilder)
+  when(requestBuilder.withBody(requestCaptor.capture())(using ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+    .thenReturn(requestBuilder)
+  when(requestBuilder.withBody(jsonCaptor.capture())(using ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+    .thenReturn(requestBuilder)
 
-
-  def requestBuilderExecute[A](result: Future[A]): Unit = {
+  def requestBuilderExecute[A](result: Future[A]): Unit =
     when(
       requestBuilder.execute[A](using any[HttpReads[A]], any[ExecutionContext])
     ).thenReturn(result)
-  }
 }

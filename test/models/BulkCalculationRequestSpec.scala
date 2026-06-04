@@ -30,22 +30,24 @@ class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
   val cc = stubMessagesControllerComponents()
   implicit val messages: MessagesImpl = MessagesImpl(cc.langs.availables.head, cc.messagesApi)
 
-  def additionalConfiguration: Map[String, String] = Map("logger.application" -> "ERROR",
-    "logger.play" -> "ERROR",
-    "logger.root" -> "ERROR",
+  def additionalConfiguration: Map[String, String] = Map(
+    "logger.application" -> "ERROR",
+    "logger.play"        -> "ERROR",
+    "logger.root"        -> "ERROR",
     "org.apache.logging" -> "ERROR",
-    "com.codahale" -> "ERROR")
+    "com.codahale"       -> "ERROR"
+  )
 
   private val bindModules: Seq[GuiceableModule] = Seq()
 
   implicit override lazy val app: Application = new GuiceApplicationBuilder()
     .configure(additionalConfiguration)
-    .bindings(bindModules*).in(Mode.Test)
+    .bindings(bindModules*)
+    .in(Mode.Test)
     .build()
   val nino = RandomNino.generate
 
-  val jsonBulkCalculationRequest = Json.parse(
-    s"""
+  val jsonBulkCalculationRequest = Json.parse(s"""
     {
         "_id": "bulk1",
         "uploadReference" : "test-uuid1",
@@ -158,8 +160,7 @@ class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
     }
     """)
 
-  val jsonCalculationRequestWithValidationError = Json.parse(
-    """
+  val jsonCalculationRequestWithValidationError = Json.parse("""
       {
         "lineId" : 1,
         "bulkId": "843",
@@ -173,8 +174,7 @@ class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
       }
     """)
 
-  val jsonCalculationRequestWithMatchingResponse = Json.parse(
-    s"""
+  val jsonCalculationRequestWithMatchingResponse = Json.parse(s"""
       {
         "lineId" : 1,
         "bulkId" : "87467",
@@ -218,8 +218,7 @@ class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
       }
     """)
 
-  val jsonCalculationRequestWithMatchingResponseWithNoError = Json.parse(
-    s"""
+  val jsonCalculationRequestWithMatchingResponseWithNoError = Json.parse(s"""
       {
         "lineId" : 1,
         "bulkId": "4732894",
@@ -262,14 +261,13 @@ class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
       }
     """)
 
-
   "CalculationRequest hasErrors" must {
     "return true if globalErrorCode defined" in {
 
       val request = jsonCalculationRequestWithMatchingResponse.as[ProcessReadyCalculationRequest]
-      request.hasErrors must be(true)
+      request.hasErrors                     must be(true)
       request.getGlobalErrorMessageReason() must be(Some(Messages("63151.reason")))
-      request.getGlobalErrorMessageWhat() must be(Some(Messages("63151.what")))
+      request.getGlobalErrorMessageWhat()   must be(Some(Messages("63151.what")))
     }
 
     "return true if validationErrors defined" in {
@@ -282,9 +280,9 @@ class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
 
       val request = jsonCalculationRequestWithMatchingResponseWithNoError.as[ProcessReadyCalculationRequest]
 
-      request.hasErrors must be(false)
+      request.hasErrors                     must be(false)
       request.getGlobalErrorMessageReason() must be(None)
-      request.getGlobalErrorMessageWhat() must be(None)
+      request.getGlobalErrorMessageWhat()   must be(None)
     }
   }
 
@@ -295,7 +293,6 @@ class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
       request.failedRequestCount must be(4)
     }
   }
-
 
   "handle timestamp conversion" in {
     val bprJson = Json.parse(

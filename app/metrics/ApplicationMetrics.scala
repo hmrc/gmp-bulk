@@ -25,10 +25,10 @@ import play.api.Logging
 import scala.concurrent.duration
 import scala.util.Try
 
-class ApplicationMetrics @Inject()(registry: MetricRegistry) extends Logging {
+class ApplicationMetrics @Inject() (registry: MetricRegistry) extends Logging {
 
-  private val timer = (name: String) => Try{registry.timer(name)}
-  private val counter = (name: String) => Try{registry.counter(name)}
+  private val timer   = (name: String) => Try(registry.timer(name))
+  private val counter = (name: String) => Try(registry.counter(name))
 
   logger.info("[Metrics][constructor] Preloading metrics keys")
 
@@ -73,34 +73,30 @@ class ApplicationMetrics @Inject()(registry: MetricRegistry) extends Logging {
     ("mci-connection-timer", timer),
     ("mci-lock-result-count", counter),
     ("mci-error-result-count", counter)
-  ).foreach { t => t._2(t._1) }
+  ).foreach(t => t._2(t._1))
 
-  def metricTimer(diff: Long, unit: duration.TimeUnit, name : String) : Unit = {
-    Try{registry.timer(name).update(diff, unit)}
-      .failed.foreach(_ => logger.warn(s"$name failed : Metrics may be disabled" ))
-  }
+  def metricTimer(diff: Long, unit: duration.TimeUnit, name: String): Unit =
+    Try(registry.timer(name).update(diff, unit)).failed.foreach(_ => logger.warn(s"$name failed : Metrics may be disabled"))
 
-  def metricCounter(name : String) : Unit = {
-    Try{registry.counter(name).inc()}
-      .failed.foreach(_ => logger.warn(s"$name failed : Metrics may be disabled" ))
-  }
+  def metricCounter(name: String): Unit =
+    Try(registry.counter(name).inc()).failed.foreach(_ => logger.warn(s"$name failed : Metrics may be disabled"))
 
   def processRequest(diff: Long, unit: duration.TimeUnit): Unit = metricTimer(diff, unit, "processRequest-timer")
 
-  def registerSuccessfulRequest() = metricCounter("des-connector-requests-successful")
-  def ifRegisterSuccessfulRequest() = metricCounter("des-connector-requests-successful")
+  def registerSuccessfulRequest()    = metricCounter("des-connector-requests-successful")
+  def ifRegisterSuccessfulRequest()  = metricCounter("des-connector-requests-successful")
   def hipRegisterSuccessfulRequest() = metricCounter("hip-connector-requests-successful")
 
-  def registerFailedRequest() = metricCounter("des-connector-requests-failed")
-  def ifRegisterFailedRequest() = metricCounter("des-connector-requests-failed")
+  def registerFailedRequest()    = metricCounter("des-connector-requests-failed")
+  def ifRegisterFailedRequest()  = metricCounter("des-connector-requests-failed")
   def hipRegisterFailedRequest() = metricCounter("hip-connector-requests-failed")
 
-  def registerStatusCode(code: String) = metricCounter(s"des-connector-httpstatus-$code")
-  def ifRegisterStatusCode(code: String) = metricCounter(s"des-connector-httpstatus-$code")
+  def registerStatusCode(code:    String) = metricCounter(s"des-connector-httpstatus-$code")
+  def ifRegisterStatusCode(code:  String) = metricCounter(s"des-connector-httpstatus-$code")
   def hipRegisterStatusCode(code: String) = metricCounter(s"hip-connector-httpstatus-$code")
 
   def desConnectionTime(diff: Long, timeUnit: TimeUnit) = metricTimer(diff, timeUnit, "des-connector-timer")
-  def ifConnectionTime(diff: Long, timeUnit: TimeUnit) = metricTimer(diff, timeUnit, "des-connector-timer")
+  def ifConnectionTime(diff:  Long, timeUnit: TimeUnit) = metricTimer(diff, timeUnit, "des-connector-timer")
   def hipConnectionTime(diff: Long, timeUnit: TimeUnit) = metricTimer(diff, timeUnit, "hip-connector-timer")
 
   def insertResponseByReferenceTimer(diff: Long, unit: duration.TimeUnit): Unit =

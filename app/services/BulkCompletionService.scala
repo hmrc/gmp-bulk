@@ -24,29 +24,30 @@ import uk.gov.hmrc.mongo.lock.{LockService, MongoLockRepository}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.DurationInt
 
+class BulkCompletionService @Inject() (bulkCalculationMongoRepository: BulkCalculationMongoRepository, mongoLockRepository: MongoLockRepository)(
+  implicit ec: ExecutionContext
+) extends Logging {
 
-class BulkCompletionService @Inject() (bulkCalculationMongoRepository : BulkCalculationMongoRepository,
-                                       mongoLockRepository: MongoLockRepository)(implicit ec: ExecutionContext) extends Logging {
-
-val lockId = "bulkcompletion"
+  val lockId = "bulkcompletion"
   val lockService: LockService = LockService(mongoLockRepository, lockId = lockId, ttl = 5.minutes)
 
   // $COVERAGE-OFF$
   lazy val repository: BulkCalculationRepository = bulkCalculationMongoRepository
   // $COVERAGE-ON$
 
-
   def checkForComplete(): Future[Unit] = {
     logger.info("[BulkCompletionService] Starting..")
-    lockService.withLock {
-      logger.info("[BulkCompletionService] Got lock")
-      repository.findAndComplete()
-    }.map {
-      case Some(_) =>
-        logger.info("[BulkCompletionService][receive] Obtained mongo lock")
-      // $COVERAGE-OFF$
-      case _ => logger.info("[BulkCompletionService][receive] Failed to obtain mongo lock")
-      // $COVERAGE-ON$
-    }
+    lockService
+      .withLock {
+        logger.info("[BulkCompletionService] Got lock")
+        repository.findAndComplete()
+      }
+      .map {
+        case Some(_) =>
+          logger.info("[BulkCompletionService][receive] Obtained mongo lock")
+        // $COVERAGE-OFF$
+        case _ => logger.info("[BulkCompletionService][receive] Failed to obtain mongo lock")
+        // $COVERAGE-ON$
+      }
   }
 }

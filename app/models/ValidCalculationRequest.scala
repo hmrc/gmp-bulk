@@ -19,33 +19,34 @@ package models
 import java.net.URLEncoder
 import play.api.libs.json.{Json, OFormat}
 
-case class ValidCalculationRequest(scon: String,
-                                   nino: String,
-                                   surname: String,
-                                   firstForename: String,
-                                   memberReference: Option[String],
-                                   calctype: Option[Int],
-                                   revaluationDate: Option[String] = None,
-                                   revaluationRate: Option[Int] = None,
-                                   dualCalc: Option[Int] = None,
-                                   terminationDate: Option[String] = None,
-                                   memberIsInScheme: Option[Boolean] = None
-                                  ) {
+case class ValidCalculationRequest(
+  scon:             String,
+  nino:             String,
+  surname:          String,
+  firstForename:    String,
+  memberReference:  Option[String],
+  calctype:         Option[Int],
+  revaluationDate:  Option[String] = None,
+  revaluationRate:  Option[Int] = None,
+  dualCalc:         Option[Int] = None,
+  terminationDate:  Option[String] = None,
+  memberIsInScheme: Option[Boolean] = None
+) {
 
   val queryParams: Seq[(String, String)] =
     Seq(
-      "revalrate" -> revaluationRate,
-      "revaldate" -> revaluationDate,
-      "calctype" -> calctype,
+      "revalrate"        -> revaluationRate,
+      "revaldate"        -> revaluationDate,
+      "calctype"         -> calctype,
       "request_earnings" -> Some(1),
-      "dualcalc" -> dualCalc,
-      "term_date" -> terminationDate
-    ).collect{case (k, v) if v.isDefined => (k, v.get.toString)}
+      "dualcalc"         -> dualCalc,
+      "term_date"        -> terminationDate
+    ).collect { case (k, v) if v.isDefined => (k, v.get.toString) }
 
-  //TODO align scon formatting to api spec. ([s])([1-9]{1,7}[A-Z])
+  // TODO align scon formatting to api spec. ([s])([1-9]{1,7}[A-Z])
   def desUri: String = {
-    val truncatedSurname = URLEncoder.encode(surname.replace(" ", "").take(3).toUpperCase, "UTF-8")
-    val initial = URLEncoder.encode(firstForename.take(1).toUpperCase, "UTF-8")
+    val truncatedSurname                     = URLEncoder.encode(surname.replace(" ", "").take(3).toUpperCase, "UTF-8")
+    val initial                              = URLEncoder.encode(firstForename.take(1).toUpperCase, "UTF-8")
     val (sconPrefix, sconNumber, sconSuffix) =
       (scon.substring(0, 1).toUpperCase, scon.substring(1, 8), scon.substring(8, 9).toUpperCase)
 
@@ -53,8 +54,8 @@ case class ValidCalculationRequest(scon: String,
   }
 
   def ifUri: String = {
-    val truncatedSurname = URLEncoder.encode(surname.replace(" ", "").take(3).toUpperCase, "UTF-8")
-    val initial = URLEncoder.encode(firstForename.take(1).toUpperCase, "UTF-8")
+    val truncatedSurname                     = URLEncoder.encode(surname.replace(" ", "").take(3).toUpperCase, "UTF-8")
+    val initial                              = URLEncoder.encode(firstForename.take(1).toUpperCase, "UTF-8")
     val (sconPrefix, sconNumber, sconSuffix) =
       (scon.substring(0, 1).toUpperCase, scon.substring(1, 8), scon.substring(8, 9).toUpperCase)
 

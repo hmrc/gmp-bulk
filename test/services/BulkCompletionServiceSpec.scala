@@ -37,18 +37,17 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class BulkCompletionServiceSpec extends AnyWordSpecLike with MockitoSugar with GuiceOneAppPerSuite with BeforeAndAfterEach with MongoSupport {
 
-  lazy val bulkCalculationRespository: BulkCalculationMongoRepository =app.injector.instanceOf[BulkCalculationMongoRepository]
-  val mongoLockRepository: MongoLockRepository = app.injector.instanceOf[MongoLockRepository]
-  private implicit lazy val ec: ExecutionContext = Helpers.stubControllerComponents().executionContext
+  lazy val bulkCalculationRespository: BulkCalculationMongoRepository = app.injector.instanceOf[BulkCalculationMongoRepository]
+  val mongoLockRepository:             MongoLockRepository            = app.injector.instanceOf[MongoLockRepository]
+  private implicit lazy val ec:        ExecutionContext               = Helpers.stubControllerComponents().executionContext
 
-  object TestBulkCompletionService extends BulkCompletionService(bulkCalculationRespository, mongoLockRepository ) {
+  object TestBulkCompletionService extends BulkCompletionService(bulkCalculationRespository, mongoLockRepository) {
     override lazy val repository = bulkCalculationRespository
   }
 
   val nino = RandomNino.generate
 
-  val jsonWithResponses = Json.parse(
-    s"""
+  val jsonWithResponses = Json.parse(s"""
     {
         "uploadReference" : "test-uuid1",
         "userId" : "B1234568",
@@ -142,7 +141,7 @@ class BulkCompletionServiceSpec extends AnyWordSpecLike with MockitoSugar with G
 
     "get a lock and check for completed documents" in {
 
-      val request = jsonWithResponses.as[BulkCalculationRequest]
+      val request   = jsonWithResponses.as[BulkCalculationRequest]
       val uploadRef = UUID.randomUUID().toString
 
       await(bulkCalculationRespository.insertBulkDocument(request.copy(uploadReference = uploadRef)))
@@ -151,7 +150,7 @@ class BulkCompletionServiceSpec extends AnyWordSpecLike with MockitoSugar with G
       val result = await(bulkCalculationRespository.findByReference(uploadRef))
       result.get.complete
       result.get.complete should be(true)
-      result.get.total should be(4)
+      result.get.total    should be(4)
     }
 
     "cant get a lock" in {

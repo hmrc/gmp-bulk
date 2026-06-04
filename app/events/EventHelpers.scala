@@ -18,10 +18,10 @@ package events
 
 object EventHelpers {
 
-  def createMultiEntry(values: List[Any]):String = {
+  def createMultiEntry(values: List[Any]): String = {
 
-    val groupedValues = values.groupBy(identity).view.mapValues(_.size).map {
-      case (k, v) => k.toString + ":" + v.toString
+    val groupedValues = values.groupBy(identity).view.mapValues(_.size).map { case (k, v) =>
+      k.toString + ":" + v.toString
     }
 
     groupedValues.mkString(";")

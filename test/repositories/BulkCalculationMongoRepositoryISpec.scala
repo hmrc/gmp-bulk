@@ -40,7 +40,7 @@ import java.time.LocalDateTime
 import scala.annotation.nowarn
 
 class BulkCalculationMongoRepositoryISpec
-  extends AnyWordSpec
+    extends AnyWordSpec
     with Matchers
     with MockitoSugar
     with ScalaFutures
@@ -57,9 +57,9 @@ class BulkCalculationMongoRepositoryISpec
     mongoComponent.database.getCollection("bulk-calculation").drop().toFuture().futureValue
   }
 
-  private val metrics: ApplicationMetrics = mock[ApplicationMetrics]
-  private val audit: AuditConnector = mock[AuditConnector]
-  private val email: EmailConnector = mock[EmailConnector]
+  private val metrics: ApplicationMetrics              = mock[ApplicationMetrics]
+  private val audit:   AuditConnector                  = mock[AuditConnector]
+  private val email:   EmailConnector                  = mock[EmailConnector]
   private val appConf: config.ApplicationConfiguration = mock[config.ApplicationConfiguration]
 
   private def newRepo()(implicit ec: ExecutionContext): BulkCalculationMongoRepository = {
@@ -68,15 +68,27 @@ class BulkCalculationMongoRepositoryISpec
   }
 
   private def mkBulk(uploadRef: String, withResponses: Boolean = false): BulkCalculationRequest = {
-    val calcResp = if (withResponses) Some(GmpBulkCalculationResponse(Nil, 0, None, None, None, containsErrors = false)) else None
+    val calcResp = if withResponses then Some(GmpBulkCalculationResponse(Nil, 0, None, None, None, containsErrors = false)) else None
     BulkCalculationRequest(
       _id = None,
       uploadReference = uploadRef,
       email = "user@test.com",
       reference = "ref-1",
       calculationRequests = List(
-        CalculationRequest(None, 1, Some(ValidCalculationRequest("S1401234Q", "AA111111A", "Smith", "Bill", None, Some(1), None, None, None, None)), None, calcResp),
-        CalculationRequest(None, 2, Some(ValidCalculationRequest("S1401234Q", "AA111111A", "Smith", "Bill", None, Some(1), None, None, None, None)), None, None)
+        CalculationRequest(
+          None,
+          1,
+          Some(ValidCalculationRequest("S1401234Q", "AA111111A", "Smith", "Bill", None, Some(1), None, None, None, None)),
+          None,
+          calcResp
+        ),
+        CalculationRequest(
+          None,
+          2,
+          Some(ValidCalculationRequest("S1401234Q", "AA111111A", "Smith", "Bill", None, Some(1), None, None, None, None)),
+          None,
+          None
+        )
       ),
       userId = "user-1",
       timestamp = LocalDateTime.now(),
@@ -91,10 +103,10 @@ class BulkCalculationMongoRepositoryISpec
       val repo = newRepo()
 
       val bulk = mkBulk("upl-1")
-      whenReady(repo.insertBulkDocument(bulk)) { res => res mustBe true }
+      whenReady(repo.insertBulkDocument(bulk))(res => res mustBe true)
 
       // duplicate
-      whenReady(repo.insertBulkDocument(bulk)) { res => res mustBe false }
+      whenReady(repo.insertBulkDocument(bulk))(res => res mustBe false)
 
       // findByReference should return the processed bulk with children
       whenReady(repo.findByReference("upl-1")) { opt =>
@@ -108,20 +120,20 @@ class BulkCalculationMongoRepositoryISpec
 
   "BulkCalculationMongoRepository.insertResponseByReference" should {
     "update a child with a response and mark hasResponse true" in {
-      val repo = newRepo()
-      val bulk = mkBulk("upl-2")
+      val repo     = newRepo()
+      val bulk     = mkBulk("upl-2")
       val inserted = repo.insertBulkDocument(bulk).futureValue
       inserted mustBe true
 
       // Load the processed bulk to get generated bulkId
       val processed = repo.findByReference("upl-2").futureValue.get
-      val bulkId = processed._id
+      val bulkId    = processed._id
 
-      val resp = GmpBulkCalculationResponse(Nil, 400, None, None, None, containsErrors = true)
+      val resp    = GmpBulkCalculationResponse(Nil, 400, None, None, None, containsErrors = true)
       val updated = repo.insertResponseByReference(bulkId, 2, resp).futureValue
       updated mustBe true
 
-      val after = repo.findByReference("upl-2").futureValue.get
+      val after  = repo.findByReference("upl-2").futureValue.get
       val child2 = after.calculationRequests.find(_.lineId == 2).get
       child2.hasResponse mustBe true
       child2.calculationResponse.isDefined mustBe true
@@ -135,20 +147,22 @@ class BulkCalculationMongoRepositoryISpec
       val base = mkBulk("upl-3")
 
       val failedResp = Some(GmpBulkCalculationResponse(Nil, 400, None, None, None, containsErrors = true))
-      val okResp = Some(GmpBulkCalculationResponse(Nil, 0, None, None, None, containsErrors = false))
-      val enriched = base.copy(calculationRequests = List(
-        base.calculationRequests.head.copy(lineId = 1, calculationResponse = okResp),                    // success
-        base.calculationRequests(1).copy(lineId = 2, calculationResponse = failedResp),                  // failed (containsErrors)
-        base.calculationRequests(1).copy(lineId = 3, validationErrors = Some(Map("nino" -> "bad")))      // failed (validationErrors)
-      ))
+      val okResp     = Some(GmpBulkCalculationResponse(Nil, 0, None, None, None, containsErrors = false))
+      val enriched   = base.copy(calculationRequests =
+        List(
+          base.calculationRequests.head.copy(lineId = 1, calculationResponse = okResp), // success
+          base.calculationRequests(1).copy(lineId = 2, calculationResponse = failedResp), // failed (containsErrors)
+          base.calculationRequests(1).copy(lineId = 3, validationErrors = Some(Map("nino" -> "bad"))) // failed (validationErrors)
+        )
+      )
 
       repo.insertBulkDocument(enriched).futureValue mustBe true
 
       val all = repo.findByReference("upl-3", CsvFilter.All).futureValue.get
-      all.calculationRequests.map(_.lineId) mustBe List(1,2,3)
+      all.calculationRequests.map(_.lineId) mustBe List(1, 2, 3)
 
       val failed = repo.findByReference("upl-3", CsvFilter.Failed).futureValue.get
-      failed.calculationRequests.map(_.lineId) mustBe List(2,3)
+      failed.calculationRequests.map(_.lineId) mustBe List(2, 3)
 
       val success = repo.findByReference("upl-3", CsvFilter.Successful).futureValue.get
       success.calculationRequests.map(_.lineId) mustBe List(1)
@@ -184,7 +198,7 @@ class BulkCalculationMongoRepositoryISpec
       val list = maybe.get
       list.nonEmpty mustBe true
       // all inserted children have isChild=true, hasValidRequest=true, hasResponse=false, hasValidationErrors=false
-      list.map(_.lineId).toSet mustBe Set(1,2)
+      list.map(_.lineId).toSet mustBe Set(1, 2)
     }
   }
 
@@ -196,9 +210,9 @@ class BulkCalculationMongoRepositoryISpec
       val bulk = mkBulk("upl-6", withResponses = false)
       repo.insertBulkDocument(bulk).futureValue mustBe true
       val processed = repo.findByReference("upl-6").futureValue.get
-      val bulkId = processed._id
+      val bulkId    = processed._id
 
-      val ok = GmpBulkCalculationResponse(Nil, 0, None, None, None, containsErrors = false)
+      val ok     = GmpBulkCalculationResponse(Nil, 0, None, None, None, containsErrors = false)
       val failed = GmpBulkCalculationResponse(Nil, 400, None, None, None, containsErrors = true)
       repo.insertResponseByReference(bulkId, 1, ok).futureValue mustBe true
       repo.insertResponseByReference(bulkId, 2, failed).futureValue mustBe true

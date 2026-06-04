@@ -40,11 +40,10 @@ class ValidCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
         (emptyRequest.copy(terminationDate = Some("apocalypse")), ("term_date", "apocalypse"))
       )
 
-      for((request, params) <- paramTests) {
+      for (request, params) <- paramTests do
         s"${params._1} is some" in {
           request.queryParams.toSet mustEqual Seq(("request_earnings", "1"), params).toSet
         }
-      }
     }
 
     "format the surname in the uri" when {
