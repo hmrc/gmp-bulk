@@ -17,8 +17,10 @@
 package models
 
 import helpers.RandomNino
+import play.api.libs.json.{JsError, Json}
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.play.PlaySpec
+import uk.gov.hmrc.domain.Nino
 
 class ValidCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
 
@@ -75,7 +77,29 @@ class ValidCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
     }
 
     "Construct the request uri" in {
-      emptyRequest.desUri mustEqual s"/scon/S/1234567/A/nino/$nino/surname/PAN/firstname/P/calculation/"
+      emptyRequest.desUri mustEqual s"/scon/S/1234567/A/nino/${nino.value}/surname/PAN/firstname/P/calculation/"
+    }
+
+    "read old lowercase NINOs as uppercase" in {
+      val json = Json.obj(
+        "scon"          -> "S1234567A",
+        "nino"          -> "aa111111a",
+        "surname"       -> "Pan",
+        "firstForename" -> "Peter"
+      )
+
+      json.validate[ValidCalculationRequest].get.nino mustBe Nino("AA111111A")
+    }
+
+    "fail when the stored NINO is not valid after uppercasing" in {
+      val json = Json.obj(
+        "scon"          -> "S1234567A",
+        "nino"          -> "QQ111111A",
+        "surname"       -> "Pan",
+        "firstForename" -> "Peter"
+      )
+
+      json.validate[ValidCalculationRequest] mustBe a[JsError]
     }
   }
 }

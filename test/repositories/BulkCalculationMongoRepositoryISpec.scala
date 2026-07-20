@@ -17,6 +17,7 @@
 package repositories
 
 import org.scalatest.wordspec.AnyWordSpec
+import uk.gov.hmrc.domain.Nino
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.ScalaFutures
@@ -26,6 +27,7 @@ import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, MongoSupport}
 import org.mongodb.scala.*
+import org.mongodb.scala.model.{Filters, Updates}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -78,14 +80,14 @@ class BulkCalculationMongoRepositoryISpec
         CalculationRequest(
           None,
           1,
-          Some(ValidCalculationRequest("S1401234Q", "AA111111A", "Smith", "Bill", None, Some(1), None, None, None, None)),
+          Some(ValidCalculationRequest("S1401234Q", Nino("AA111111A"), "Smith", "Bill", None, Some(1), None, None, None, None)),
           None,
           calcResp
         ),
         CalculationRequest(
           None,
           2,
-          Some(ValidCalculationRequest("S1401234Q", "AA111111A", "Smith", "Bill", None, Some(1), None, None, None, None)),
+          Some(ValidCalculationRequest("S1401234Q", Nino("AA111111A"), "Smith", "Bill", None, Some(1), None, None, None, None)),
           None,
           None
         )
@@ -199,6 +201,95 @@ class BulkCalculationMongoRepositoryISpec
       list.nonEmpty mustBe true
       // all inserted children have isChild=true, hasValidRequest=true, hasResponse=false, hasValidationErrors=false
       list.map(_.lineId).toSet mustBe Set(1, 2)
+    }
+
+    "read old pending children with lowercase NINOs before processing" in {
+      val repo = newRepo()
+      val bulk = BulkCalculationRequest(
+        _id = None,
+        uploadReference = "upl-nino-case",
+        email = "user@test.com",
+        reference = "ref-nino",
+        calculationRequests = List(
+          CalculationRequest(
+            None,
+            1,
+            Some(ValidCalculationRequest("S1401234Q", Nino("AA111111A"), "Smith", "Bill", None, Some(1), None, None, None, None)),
+            None,
+            None
+          ),
+          CalculationRequest(
+            None,
+            2,
+            Some(ValidCalculationRequest("S1401234Q", Nino("AA111111A"), "Smith", "Bill", None, Some(1), None, None, None, None)),
+            None,
+            None
+          ),
+          CalculationRequest(
+            None,
+            3,
+            Some(ValidCalculationRequest("S1401234Q", Nino("AA111111A"), "Smith", "Bill", None, Some(1), None, None, None, None)),
+            None,
+            None
+          )
+        ),
+        userId = "user-1",
+        timestamp = LocalDateTime.now(),
+        complete = Some(false),
+        total = Some(0),
+        failed = Some(0)
+      )
+      repo.insertBulkDocument(bulk).futureValue mustBe true
+
+      val collection = mongoComponent.database.getCollection("bulk-calculation")
+      collection
+        .updateOne(Filters.equal("lineId", 1), Updates.set("validCalculationRequest.nino", "aa111111a"))
+        .toFuture()
+        .futureValue
+      val ready = repo.findRequestsToProcess().futureValue.get
+      ready.map(_.lineId) mustBe List(1, 2, 3)
+      ready.find(_.lineId == 1).flatMap(_.validCalculationRequest).map(_.nino) mustBe Some(Nino("AA111111A"))
+
+      val processed = repo.findByReference("upl-nino-case").futureValue.get
+      val child1    = processed.calculationRequests.find(_.lineId == 1).get
+      child1.hasValidationErrors mustBe false
+      child1.hasValidRequest mustBe true
+      child1.validCalculationRequest.map(_.nino) mustBe Some(Nino("AA111111A"))
+
+      val child3 = processed.calculationRequests.find(_.lineId == 3).get
+      child3.hasValidationErrors mustBe false
+      child3.hasValidRequest mustBe true
+    }
+
+    "read old validation children with invalid NINOs for result downloads" in {
+      val repo = newRepo()
+      val bulk = mkBulk("upl-invalid-nino-child", withResponses = false)
+      repo.insertBulkDocument(bulk).futureValue mustBe true
+
+      val processed = repo.findByReference("upl-invalid-nino-child").futureValue.get
+      val bulkId    = processed._id
+
+      val collection = mongoComponent.database.getCollection("bulk-calculation")
+      collection
+        .updateOne(
+          Filters.and(Filters.equal("bulkId", bulkId), Filters.equal("lineId", 1)),
+          Updates.combine(
+            Updates.set("validCalculationRequest.nino", "QQ000000A"),
+            Updates.set(s"validationErrors.${RequestFieldKey.NINO}", "National Insurance number must be valid"),
+            Updates.set("hasValidationErrors", true),
+            Updates.set("hasValidRequest", false)
+          )
+        )
+        .toFuture()
+        .futureValue
+
+      val after  = repo.findByReference("upl-invalid-nino-child").futureValue.get
+      val child1 = after.calculationRequests.find(_.lineId == 1).get
+
+      child1.validCalculationRequest mustBe None
+      child1.validationErrors mustBe Some(Map(RequestFieldKey.NINO.toString -> "National Insurance number must be valid"))
+      (child1.rawCalculationRequest.get \ "nino").as[String] mustBe "QQ000000A"
+      (child1.rawCalculationRequest.get \ "scon").as[String] mustBe "S1401234Q"
     }
   }
 

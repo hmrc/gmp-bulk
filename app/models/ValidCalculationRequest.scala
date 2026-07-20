@@ -17,11 +17,14 @@
 package models
 
 import java.net.URLEncoder
-import play.api.libs.json.{Json, OFormat}
+import java.util.Locale
+import play.api.libs.functional.syntax.*
+import play.api.libs.json.*
+import uk.gov.hmrc.domain.Nino
 
 case class ValidCalculationRequest(
   scon:             String,
-  nino:             String,
+  nino:             Nino,
   surname:          String,
   firstForename:    String,
   memberReference:  Option[String],
@@ -50,7 +53,7 @@ case class ValidCalculationRequest(
     val (sconPrefix, sconNumber, sconSuffix) =
       (scon.substring(0, 1).toUpperCase, scon.substring(1, 8), scon.substring(8, 9).toUpperCase)
 
-    s"""/scon/$sconPrefix/$sconNumber/$sconSuffix/nino/${nino.toUpperCase}/surname/$truncatedSurname/firstname/$initial/calculation/"""
+    s"""/scon/$sconPrefix/$sconNumber/$sconSuffix/nino/${nino.value}/surname/$truncatedSurname/firstname/$initial/calculation/"""
   }
 
   def ifUri: String = {
@@ -59,10 +62,33 @@ case class ValidCalculationRequest(
     val (sconPrefix, sconNumber, sconSuffix) =
       (scon.substring(0, 1).toUpperCase, scon.substring(1, 8), scon.substring(8, 9).toUpperCase)
 
-    s"""/scon/$sconPrefix/$sconNumber/$sconSuffix/nino/${nino.toUpperCase}/surname/$truncatedSurname/firstname/$initial/calculation/"""
+    s"""/scon/$sconPrefix/$sconNumber/$sconSuffix/nino/${nino.value}/surname/$truncatedSurname/firstname/$initial/calculation/"""
   }
 }
 
 object ValidCalculationRequest {
-  implicit val formats: OFormat[ValidCalculationRequest] = Json.format[ValidCalculationRequest]
+  private val ninoReads: Reads[Nino] = Reads {
+    case JsString(value) =>
+      val normalised = value.toUpperCase(Locale.ROOT)
+      if Nino.isValid(normalised) then JsSuccess(Nino(normalised))
+      else JsError("error.expected.nino")
+    case _ => JsError("error.expected.jsstring")
+  }
+
+  implicit val reads: Reads[ValidCalculationRequest] = (
+    (__ \ "scon").read[String] and
+      (__ \ "nino").read[Nino](ninoReads) and
+      (__ \ "surname").read[String] and
+      (__ \ "firstForename").read[String] and
+      (__ \ "memberReference").readNullable[String] and
+      (__ \ "calctype").readNullable[Int] and
+      (__ \ "revaluationDate").readNullable[String] and
+      (__ \ "revaluationRate").readNullable[Int] and
+      (__ \ "dualCalc").readNullable[Int] and
+      (__ \ "terminationDate").readNullable[String] and
+      (__ \ "memberIsInScheme").readNullable[Boolean]
+  )(ValidCalculationRequest.apply)
+
+  implicit val writes:  OWrites[ValidCalculationRequest] = Json.writes[ValidCalculationRequest]
+  implicit val formats: OFormat[ValidCalculationRequest] = OFormat(reads, writes)
 }

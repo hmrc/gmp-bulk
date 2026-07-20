@@ -90,7 +90,7 @@ object HipCalculationRequest {
     }
     HipCalculationRequest(
       schemeContractedOutNumber = calcReq.scon,
-      nationalInsuranceNumber = calcReq.nino.toUpperCase.trim,
+      nationalInsuranceNumber = calcReq.nino.value,
       surname = calcReq.surname.take(3).toUpperCase.trim,
       firstForename = calcReq.firstForename.trim.charAt(0).toUpper.toString,
       secondForename = None,

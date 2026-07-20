@@ -13,16 +13,17 @@ lazy val scoverageSettings = Seq(
   ScoverageKeys.coverageHighlighting := true
 )
 
-lazy val plugins : Seq[Plugins] = Seq(
+lazy val plugins: Seq[Plugins] = Seq(
   play.sbt.PlayScala
 )
 
 lazy val microservice = Project(appName, file("."))
   .enablePlugins(plugins *)
-  .settings(headerLicense := {Some(HeaderLicense.ALv2(LocalDate.now().getYear.toString, "HM Revenue & Customs"))})
+  .settings(headerLicense := Some(HeaderLicense.ALv2(LocalDate.now().getYear.toString, "HM Revenue & Customs")))
   .enablePlugins(SbtDistributablesPlugin)
   .disablePlugins(sbt.plugins.JUnitXmlReportPlugin)
-  .settings(scoverageSettings,
+  .settings(
+    scoverageSettings,
     majorVersion := 2,
     scalaSettings,
     defaultSettings(),
@@ -48,5 +49,5 @@ lazy val microservice = Project(appName, file("."))
       "-Wconf:msg=Implicit parameters should be provided with a `using` clause:s",
       "-Wconf:msg=unused explicit parameter:s",
       "-Wconf:msg=Setting -Wunused set to all redundantly:s"
-    ))
-  
+    )
+  )

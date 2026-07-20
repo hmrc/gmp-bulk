@@ -28,7 +28,8 @@ case class CalculationRequest(
   lineId:                  Int,
   validCalculationRequest: Option[ValidCalculationRequest],
   validationErrors:        Option[Map[String, String]],
-  calculationResponse:     Option[GmpBulkCalculationResponse]
+  calculationResponse:     Option[GmpBulkCalculationResponse],
+  rawCalculationRequest:   Option[JsObject] = None
 ) {
 
   def hasErrors: Boolean = ((calculationResponse.isDefined && calculationResponse.get.globalErrorCode > 0)
@@ -40,7 +41,19 @@ case class CalculationRequest(
 }
 
 object CalculationRequest {
-  implicit val formats: OFormat[CalculationRequest] = Json.format[CalculationRequest]
+  implicit val reads: Reads[CalculationRequest] = Reads { json =>
+    for {
+      bulkId              <- (json \ "bulkId").validateOpt[String]
+      lineId              <- (json \ "lineId").validate[Int]
+      validationErrors    <- (json \ "validationErrors").validateOpt[Map[String, String]]
+      calculationResponse <- (json \ "calculationResponse").validateOpt[GmpBulkCalculationResponse]
+      rawRequest          <- CalculationRequestReads.readRawCalculationRequest(json, validationErrors)
+      validRequest        <- CalculationRequestReads.readValidCalculationRequest(json, validationErrors)
+    } yield CalculationRequest(bulkId, lineId, validRequest, validationErrors, calculationResponse, rawRequest)
+  }
+
+  implicit val writes:  OWrites[CalculationRequest] = Json.writes[CalculationRequest]
+  implicit val formats: OFormat[CalculationRequest] = OFormat(reads, writes)
 }
 
 case class BulkCalculationRequest(
@@ -77,7 +90,8 @@ case class ProcessReadyCalculationRequest(
   isChild:                 Boolean = true,
   hasResponse:             Boolean = false,
   hasValidRequest:         Boolean = true,
-  hasValidationErrors:     Boolean = false
+  hasValidationErrors:     Boolean = false,
+  rawCalculationRequest:   Option[JsObject] = None
 ) {
 
   def hasErrors = ((calculationResponse.isDefined && calculationResponse.get.globalErrorCode > 0)
@@ -107,10 +121,73 @@ case class ProcessReadyCalculationRequest(
 
 object ProcessReadyCalculationRequest {
   // $COVERAGE-OFF$
-  implicit val dateFormat: Format[LocalDate]                       = MongoJavatimeFormats.localDateFormat
-  implicit val idFormat:   Format[ObjectId]                        = MongoFormats.objectIdFormat
-  implicit val formats:    OFormat[ProcessReadyCalculationRequest] = Json.format[ProcessReadyCalculationRequest]
+  implicit val dateFormat: Format[LocalDate] = MongoJavatimeFormats.localDateFormat
+  implicit val idFormat:   Format[ObjectId]  = MongoFormats.objectIdFormat
+
+  implicit val reads: Reads[ProcessReadyCalculationRequest] = Reads { json =>
+    for {
+      bulkId              <- (json \ "bulkId").validate[String]
+      lineId              <- (json \ "lineId").validate[Int]
+      validationErrors    <- (json \ "validationErrors").validateOpt[Map[String, String]]
+      calculationResponse <- (json \ "calculationResponse").validateOpt[GmpBulkCalculationResponse]
+      isChild             <- (json \ "isChild").validateOpt[Boolean].map(_.getOrElse(true))
+      hasResponse         <- (json \ "hasResponse").validateOpt[Boolean].map(_.getOrElse(false))
+      hasValidRequest     <- (json \ "hasValidRequest").validateOpt[Boolean].map(_.getOrElse(true))
+      hasValidationErrors <- (json \ "hasValidationErrors").validateOpt[Boolean].map(_.getOrElse(false))
+      rawRequest          <- CalculationRequestReads.readRawCalculationRequest(json, validationErrors)
+      validRequest        <- CalculationRequestReads.readValidCalculationRequest(json, validationErrors)
+    } yield ProcessReadyCalculationRequest(
+      bulkId,
+      lineId,
+      validRequest,
+      validationErrors,
+      calculationResponse,
+      isChild,
+      hasResponse,
+      hasValidRequest,
+      hasValidationErrors,
+      rawRequest
+    )
+  }
+
+  implicit val writes:  OWrites[ProcessReadyCalculationRequest] = Json.writes[ProcessReadyCalculationRequest]
+  implicit val formats: OFormat[ProcessReadyCalculationRequest] = OFormat(reads, writes)
   // $COVERAGE-ON$
+}
+
+private object CalculationRequestReads {
+  def readRawCalculationRequest(
+    json:             JsValue,
+    validationErrors: Option[Map[String, String]]
+  ): JsResult[Option[JsObject]] =
+    if validationErrors.exists(_.nonEmpty) then {
+      (json \ "rawCalculationRequest").validateOpt[JsObject].flatMap {
+        case existing @ Some(_) => JsSuccess(existing)
+        case None               =>
+          (json \ "validCalculationRequest") match {
+            case JsDefined(JsNull) | _: JsUndefined => JsSuccess(None)
+            case JsDefined(value: JsObject)         => JsSuccess(Some(value))
+            case JsDefined(_)                       => JsSuccess(None)
+          }
+      }
+    } else {
+      JsSuccess(None)
+    }
+
+  def readValidCalculationRequest(
+    json:             JsValue,
+    validationErrors: Option[Map[String, String]]
+  ): JsResult[Option[ValidCalculationRequest]] =
+    (json \ "validCalculationRequest") match {
+      case JsDefined(JsNull) | _: JsUndefined => JsSuccess(None)
+      case JsDefined(value)                   =>
+        value.validate[ValidCalculationRequest] match {
+          case JsSuccess(validRequest, _) => JsSuccess(Some(validRequest))
+          case _: JsError if validationErrors.exists(_.nonEmpty) =>
+            JsSuccess(None)
+          case errors: JsError => errors
+        }
+    }
 }
 
 case class ProcessedBulkCalculationRequest(

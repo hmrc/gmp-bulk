@@ -17,6 +17,7 @@
 package helpers
 
 import scala.util.Random
+import uk.gov.hmrc.domain.Nino
 
 object RandomNino {
 
@@ -25,10 +26,10 @@ object RandomNino {
       .split('|')
   val validSuffixes = "A|B|C|D".split('|')
 
-  def generate: String = {
+  def generate: Nino = {
     val prefix = validPrefixes(Random.nextInt(validPrefixes.length))
     val number = Random.nextInt(1000000)
     val suffix = validSuffixes(Random.nextInt(validSuffixes.length))
-    f"$prefix$number%06d$suffix"
+    Nino(f"$prefix$number%06d$suffix")
   }
 }

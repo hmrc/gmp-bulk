@@ -323,7 +323,7 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoS
 
         contentAsString(result) must include(Messages("gmp.bulk.csv.contributions.headers"))
         contentAsString(result) must include("S2730000B")
-        contentAsString(result) must include(nino)
+        contentAsString(result) must include(nino.value)
         contentAsString(result) must include("Smith")
         contentAsString(result) must include("John")
         contentAsString(result) must include("01/01/2001 - 01/01/2005")
@@ -366,7 +366,7 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoS
 
         contentAsString(result) must include(Messages("gmp.bulk.csv.contributions.headers"))
         contentAsString(result) must include("S2730000B")
-        contentAsString(result) must include(nino)
+        contentAsString(result) must include(nino.value)
         contentAsString(result) must include("Smith")
         contentAsString(result) must include("John")
         contentAsString(result) must include("01/01/2001 - 01/01/2005")
@@ -457,7 +457,7 @@ class BulkControllerSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoS
 
         contentAsString(result) must include(Messages("gmp.bulk.csv.contributions.headers"))
         contentAsString(result) must include("S2730000B")
-        contentAsString(result) must include(nino)
+        contentAsString(result) must include(nino.value)
         contentAsString(result) must include("Smith")
         contentAsString(result) must include("John")
         contentAsString(result) must include("01/01/2001 - 01/01/2005")

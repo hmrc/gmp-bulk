@@ -17,6 +17,7 @@
 package models
 
 import org.scalatestplus.play.PlaySpec
+import uk.gov.hmrc.domain.Nino
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 
 import java.time.format.DateTimeFormatter
@@ -33,7 +34,7 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
     "correctly transform CalculationRequest into HipCalculationRequest" in {
       val calcReq = ValidCalculationRequest(
         scon = "S1234567T",
-        nino = "AA123456A",
+        nino = Nino("AA123456A"),
         surname = "lewis",
         firstForename = "stan",
         memberReference = Some("TET123"),
@@ -62,7 +63,7 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
     "correctly transform CalculationRequest int values into HipCalculationRequest String" in {
       val calcReq = ValidCalculationRequest(
         scon = "S1234567T",
-        nino = "AA123456A",
+        nino = Nino("AA123456A"),
         surname = "lewis",
         firstForename = "stan",
         memberReference = Some("TET123"),
@@ -91,7 +92,7 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
     "correctly transform CalculationRequest HMRC as revaluationRate into HipCalculationRequest None value" in {
       val calcReq = ValidCalculationRequest(
         scon = "S1234567T",
-        nino = "AA123456A",
+        nino = Nino("AA123456A"),
         surname = "lewis",
         firstForename = "stan",
         memberReference = Some("TET123"),
@@ -120,7 +121,7 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
     "correctly transform CalculationRequest missing dates to HipCalculationRequest correctly" in {
       val calcReq = ValidCalculationRequest(
         scon = "S1234567T",
-        nino = "AA123456A",
+        nino = Nino("AA123456A"),
         surname = "lewis",
         firstForename = "stan",
         memberReference = Some("TET123"),
@@ -149,7 +150,7 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
     "map all revaluationRate enum branches" in {
       val base = ValidCalculationRequest(
         scon = "S1234567T",
-        nino = "AA123456A",
+        nino = Nino("AA123456A"),
         surname = "lewis",
         firstForename = "stan",
         memberReference = Some("TET123"),
@@ -170,7 +171,7 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
     "map all calculationRequestType enum branches" in {
       val base = ValidCalculationRequest(
         scon = "S1234567T",
-        nino = "AA123456A",
+        nino = Nino("AA123456A"),
         surname = "lewis",
         firstForename = "stan",
         memberReference = Some("TET123"),
@@ -191,7 +192,7 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
     "set includeDualCalculation to false when dualCalc is 0 or None" in {
       val base = ValidCalculationRequest(
         scon = "S1234567T",
-        nino = "AA123456A",
+        nino = Nino("AA123456A"),
         surname = "lewis",
         firstForename = "stan",
         memberReference = Some("TET123"),
@@ -207,7 +208,7 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
     "normalise surname, firstForename and NINO with spaces and special characters" in {
       val calcReq = ValidCalculationRequest(
         scon = "S1234567T",
-        nino = "AA123456A",
+        nino = Nino("AA123456A"),
         surname = " o'neill",
         firstForename = " ann-marie",
         memberReference = Some("TET123"),
@@ -229,7 +230,7 @@ class HipCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
     "normalise surname and firstForename without spaces" in {
       val calcReq = ValidCalculationRequest(
         scon = "S1234567T",
-        nino = "aa123456a",
+        nino = Nino("AA123456A"),
         surname = "O'Neill",
         firstForename = "Ann-Marie",
         memberReference = Some("TET123"),

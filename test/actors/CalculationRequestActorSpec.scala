@@ -33,6 +33,7 @@
 package actors
 
 import org.apache.pekko.actor.{ActorSystem, Props}
+import uk.gov.hmrc.domain.Nino
 import org.apache.pekko.testkit.{DefaultTimeout, ImplicitSender, TestKit}
 import config.{AppConfig, ApplicationConfiguration}
 import connectors.{DesConnector, DesGetHiddenRecordResponse, DesGetSuccessResponse, HipConnector, IFConnector}
@@ -805,7 +806,7 @@ class CalculationRequestActorSpec
           actorRef ! ProcessReadyCalculationRequest(
             "test",
             1,
-            Some(ValidCalculationRequest("S1401234Q", nino, "Smith", "Bill", None, None, None, None, None, None)),
+            Some(ValidCalculationRequest("S1401234Q", Nino(nino), "Smith", "Bill", None, None, None, None, None, None)),
             None,
             None
           )
