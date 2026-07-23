@@ -146,7 +146,7 @@ class IFConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite wit
         s"return a BreakerException exception when $errorCode returned from DES" in new SUT {
           val request = ValidCalculationRequest("S1401234Q", RandomNino.generate, "Smith", "Bill", None, None, None, None, None, None)
 
-          val url = s"""/pensions/individuals/gmp/scon/S/1401234/Q/nino/${request.nino.toUpperCase}/surname/SMI/firstname/B/calculation/"""
+          val url = s"""/pensions/individuals/gmp/scon/S/1401234/Q/nino/${request.nino.value}/surname/SMI/firstname/B/calculation/"""
           stubServiceGet(url, errorCode, "", "request_earnings" -> "1")
 
           intercept[BreakerException] {
@@ -160,7 +160,7 @@ class IFConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite wit
         s"return a UpstreamErrorResponse exception when $errorCode returned from DES" in new SUT {
           val request = ValidCalculationRequest("S1401234Q", RandomNino.generate, "Smith", "Bill", None, None, None, None, None, None)
 
-          val url = s"""/pensions/individuals/gmp/scon/S/1401234/Q/nino/${request.nino.toUpperCase}/surname/SMI/firstname/B/calculation/"""
+          val url = s"""/pensions/individuals/gmp/scon/S/1401234/Q/nino/${request.nino.value}/surname/SMI/firstname/B/calculation/"""
           stubServiceGet(url, errorCode, "", "request_earnings" -> "1")
 
           intercept[UpstreamErrorResponse] {

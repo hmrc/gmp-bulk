@@ -21,14 +21,30 @@ import models.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import play.api.i18n.Messages
+import play.api.libs.json.{JsBoolean, JsNumber, JsObject, JsString, JsValue}
 
 import scala.collection.mutable.ListBuffer
 import java.text.SimpleDateFormat
 import scala.annotation.nowarn
+import scala.util.Try
 
 class CsvGenerator {
 
   val DATE_DEFAULT_FORMAT = "dd/MM/yyyy"
+
+  private val rawCalculationRequestFields: Seq[(Int, String)] =
+    Seq(
+      RequestFieldKey.SCON             -> "scon",
+      RequestFieldKey.NINO             -> "nino",
+      RequestFieldKey.FORENAME         -> "firstForename",
+      RequestFieldKey.SURNAME          -> "surname",
+      RequestFieldKey.MEMBER_REFERENCE -> "memberReference",
+      RequestFieldKey.CALC_TYPE        -> "calctype",
+      RequestFieldKey.DATE_OF_LEAVING  -> "terminationDate",
+      RequestFieldKey.GMP_DATE         -> "revaluationDate",
+      RequestFieldKey.REVALUATION_RATE -> "revaluationRate",
+      RequestFieldKey.OPPOSITE_GENDER  -> "dualCalc"
+    )
 
   sealed trait Cell {
     val text: String
@@ -126,7 +142,6 @@ class CsvGenerator {
     def build: Row = ResponseRow(cells, Some(errorCell), Some(errorResolutionCell))
   }
 
-  @nowarn
   class ResponseRowBuilder(request: ProcessReadyCalculationRequest)(implicit filter: CsvFilter, messages: Messages) extends RowBuilder {
 
     request.validCalculationRequest match {
@@ -229,9 +244,53 @@ class CsvGenerator {
           case Some(err) =>
             setErrorCell(TextCell(request.validationErrors.get(err._1)))
             setErrorResolutionCell(TextCell(err._2))
+          case None =>
+            request.rawCalculationRequest match {
+              case Some(rawCalculationRequest) => addRawCalculationRequestCells(rawCalculationRequest)
+              case None                        => addValidationErrorCells(request.validationErrors.get)
+            }
         }
 
       case _ =>
+    }
+
+    private def addRawCalculationRequestCells(rawCalculationRequest: JsObject): Unit = {
+      if filter == CsvFilter.All then {
+        addCell(Messages("gmp.error"))
+      }
+
+      addValidatedCell(rawCalculationRequestValue(rawCalculationRequest, RequestFieldKey.SCON), RequestFieldKey.SCON)
+      addValidatedCell(rawCalculationRequestValue(rawCalculationRequest, RequestFieldKey.NINO), RequestFieldKey.NINO)
+      addValidatedCell(rawCalculationRequestValue(rawCalculationRequest, RequestFieldKey.FORENAME), RequestFieldKey.FORENAME)
+      addValidatedCell(rawCalculationRequestValue(rawCalculationRequest, RequestFieldKey.SURNAME), RequestFieldKey.SURNAME)
+      addValidatedCell(rawCalculationRequestValue(rawCalculationRequest, RequestFieldKey.MEMBER_REFERENCE), RequestFieldKey.MEMBER_REFERENCE)
+      addValidatedCell(convertCalcType(rawCalculationRequestIntValue(rawCalculationRequest, RequestFieldKey.CALC_TYPE)), RequestFieldKey.CALC_TYPE)
+      addValidatedCell(
+        convertDate(rawCalculationRequestValueOpt(rawCalculationRequest, RequestFieldKey.DATE_OF_LEAVING)),
+        RequestFieldKey.DATE_OF_LEAVING
+      )
+      addValidatedCell(convertDate(rawCalculationRequestValueOpt(rawCalculationRequest, RequestFieldKey.GMP_DATE)), RequestFieldKey.GMP_DATE)
+      addValidatedCell(
+        convertRevalRate(rawCalculationRequestIntValue(rawCalculationRequest, RequestFieldKey.REVALUATION_RATE)),
+        RequestFieldKey.REVALUATION_RATE
+      )
+      addValidatedCell(
+        rawCalculationRequestIntValue(rawCalculationRequest, RequestFieldKey.OPPOSITE_GENDER) match {
+          case Some(1) => Messages("gmp.generic.yes")
+          case _       => ""
+        },
+        RequestFieldKey.OPPOSITE_GENDER
+      )
+    }
+
+    private def addValidationErrorCells(validationErrors: Map[String, String]): Unit = {
+      if filter == CsvFilter.All then {
+        addCell(Messages("gmp.error"))
+      }
+
+      (RequestFieldKey.SCON to RequestFieldKey.OPPOSITE_GENDER).foreach { fieldKey =>
+        addCell(validationErrors.getOrElse(fieldKey.toString, ""))
+      }
     }
 
     private def addValidatedCell(value: Any, validationColumn: Int): Cell = {
@@ -263,8 +322,10 @@ class CsvGenerator {
     private def convertDate(date: Option[String]): String =
       date match {
         case Some(d) =>
-          val newDate = new SimpleDateFormat("yyyy-MM-dd").parse(d)
-          new SimpleDateFormat(DATE_DEFAULT_FORMAT).format(newDate)
+          Try {
+            val newDate = new SimpleDateFormat("yyyy-MM-dd").parse(d)
+            new SimpleDateFormat(DATE_DEFAULT_FORMAT).format(newDate)
+          }.getOrElse("")
         case _ => ""
       }
 
@@ -463,6 +524,27 @@ class CsvGenerator {
     csvBuilder.build
   }
 
+  private def rawCalculationRequestValue(rawCalculationRequest: JsObject, fieldKey: Int): String =
+    rawCalculationRequestValueOpt(rawCalculationRequest, fieldKey).getOrElse("")
+
+  private def rawCalculationRequestValueOpt(rawCalculationRequest: JsObject, fieldKey: Int): Option[String] =
+    rawCalculationRequestFields
+      .find(_._1 == fieldKey)
+      .flatMap { case (_, fieldName) =>
+        (rawCalculationRequest \ fieldName).toOption.flatMap(rawValueAsString)
+      }
+
+  private def rawValueAsString(value: JsValue): Option[String] =
+    value match {
+      case JsString(value)  => Some(value)
+      case JsNumber(value)  => Some(value.toString)
+      case JsBoolean(value) => Some(value.toString)
+      case _                => None
+    }
+
+  private def rawCalculationRequestIntValue(rawCalculationRequest: JsObject, fieldKey: Int): Option[Int] =
+    rawCalculationRequestValueOpt(rawCalculationRequest, fieldKey).flatMap(value => Try(value.toInt).toOption)
+
   def generateContributionsCsv(request: ProcessedBulkCalculationRequest)(implicit messages: Messages): String =
 
     Messages("gmp.bulk.csv.contributions.headers") + "\n" + request.calculationRequests
@@ -484,23 +566,28 @@ class CsvGenerator {
               validCalcRequest.nino,
               validCalcRequest.firstForename,
               validCalcRequest.surname,
-              periodRows.size match {
-                case 0 => ""
-                case _ => periodRows.head
-              }
+              periodRows.headOption.getOrElse("")
             ).mkString(",")
 
-            firstRow + generateLineSeparator(calcRequest) + (periodRows.size match {
-              case 0 => ""
-              case _ =>
-                periodRows.tail
-                  .map {
-                    "," * 4 + _
-                  }
-                  .mkString("\n")
-            })
+            firstRow + generateLineSeparator(calcRequest) + periodRows
+              .drop(1)
+              .map {
+                "," * 4 + _
+              }
+              .mkString("\n")
 
-          case _ => ""
+          case _ =>
+            calcRequest.rawCalculationRequest
+              .map(rawCalculationRequest =>
+                List(
+                  rawCalculationRequestValue(rawCalculationRequest, RequestFieldKey.SCON),
+                  rawCalculationRequestValue(rawCalculationRequest, RequestFieldKey.NINO),
+                  rawCalculationRequestValue(rawCalculationRequest, RequestFieldKey.FORENAME),
+                  rawCalculationRequestValue(rawCalculationRequest, RequestFieldKey.SURNAME),
+                  ""
+                ).mkString(",")
+              )
+              .getOrElse("")
         }
       }
       .mkString("\n")

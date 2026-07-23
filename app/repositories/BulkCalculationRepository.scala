@@ -16,7 +16,6 @@
 
 package repositories
 
-import java.util.concurrent.TimeUnit
 import com.google.inject.{Inject, Provider, Singleton}
 import config.ApplicationConfiguration
 import connectors.{EmailConnector, ProcessedUploadTemplate}
@@ -24,6 +23,7 @@ import events.BulkEvent
 import metrics.ApplicationMetrics
 import models.*
 import java.time.LocalDateTime
+import java.util.concurrent.TimeUnit
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.{BsonDocument, ObjectId}
 import org.mongodb.scala.model.{Filters, FindOneAndUpdateOptions, IndexModel, IndexOptions, Indexes, Sorts, Updates}
@@ -177,6 +177,7 @@ class BulkCalculationMongoRepository @Inject() (
 
   private def findByCsvFilterAndRequest(br: ProcessedBulkCalculationRequest, csvFilter: CsvFilter) = {
     val query = createQuery(csvFilter, br)
+
     processReadyCalsReqCollection
       .find(query)
       .sort(Sorts.ascending("lineId"))
@@ -294,20 +295,21 @@ class BulkCalculationMongoRepository @Inject() (
 
   }
 
-  private def findProcessReadyCalReq(bulkRequest: ProcessedBulkCalculationRequest) = processReadyCalsReqCollection
-    .find(
-      Filters.and(
-        Filters.equal("isChild", true),
-        Filters.equal("hasValidationErrors", false),
-        Filters.equal("bulkId", bulkRequest._id),
-        Filters.equal("hasValidRequest", true),
-        Filters.equal("hasResponse", false)
+  private def findProcessReadyCalReq(bulkRequest: ProcessedBulkCalculationRequest) =
+    processReadyCalsReqCollection
+      .find(
+        Filters.and(
+          Filters.equal("isChild", true),
+          Filters.equal("hasValidationErrors", false),
+          Filters.equal("bulkId", bulkRequest._id),
+          Filters.equal("hasValidRequest", true),
+          Filters.equal("hasResponse", false)
+        )
       )
-    )
-    .limit(applicationConfiguration.bulkProcessingBatchSize)
-    .collect()
-    .toFuture()
-    .map(_.toList)
+      .limit(applicationConfiguration.bulkProcessingBatchSize)
+      .collect()
+      .toFuture()
+      .map(_.toList)
 
   override def findAndComplete() = {
 
@@ -418,6 +420,7 @@ class BulkCalculationMongoRepository @Inject() (
 
   private def findProcessedChildren(bulkRequestId: String): Future[List[ProcessReadyCalculationRequest]] = {
     val filter = Filters.and(Filters.eq("isChild", true), Filters.eq("bulkId", bulkRequestId))
+
     processReadyCalsReqCollection.find(filter).toFuture().map(_.toList)
   }
 
@@ -517,7 +520,8 @@ class BulkCalculationMongoRepository @Inject() (
         isChild = true,
         hasResponse = c.calculationResponse.isDefined,
         hasValidRequest = c.validCalculationRequest.isDefined,
-        hasValidationErrors = c.hasErrors
+        hasValidationErrors = c.validationErrors.isDefined || c.hasErrors,
+        rawCalculationRequest = c.rawCalculationRequest
       )
     }
   }

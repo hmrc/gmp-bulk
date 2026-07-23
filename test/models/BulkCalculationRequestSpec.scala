@@ -160,7 +160,7 @@ class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
     }
     """)
 
-  val jsonCalculationRequestWithValidationError = Json.parse("""
+  val jsonCalculationRequestWithValidationError = Json.parse(s"""
       {
         "lineId" : 1,
         "bulkId": "843",
@@ -169,7 +169,46 @@ class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
         "hasResponse": false,
         "hasValidRequest": false,
         "validationErrors": {
-            "scon": "Invalid scon format"
+            "${RequestFieldKey.SCON}": "Invalid scon format"
+        }
+      }
+    """)
+
+  val jsonCalculationRequestWithInvalidNinoAndValidationError = Json.parse(s"""
+      {
+        "lineId" : 1,
+        "bulkId": "843",
+        "isChild": true,
+        "hasValidationErrors": true,
+        "hasResponse": false,
+        "hasValidRequest": false,
+        "validCalculationRequest" : {
+            "scon" : "S2730000B",
+            "nino" : "QQ000000A",
+            "surname" : "Richard-Smith",
+            "firstForename" : "Cliff",
+            "calctype" : 0
+        },
+        "validationErrors": {
+            "${RequestFieldKey.NINO}": "National Insurance number must be valid"
+        }
+      }
+    """)
+
+  val jsonCalculationRequestWithInvalidNinoAndNoValidationError = Json.parse("""
+      {
+        "lineId" : 1,
+        "bulkId": "843",
+        "isChild": true,
+        "hasValidationErrors": false,
+        "hasResponse": false,
+        "hasValidRequest": true,
+        "validCalculationRequest" : {
+            "scon" : "S2730000B",
+            "nino" : "QQ000000A",
+            "surname" : "Richard-Smith",
+            "firstForename" : "Cliff",
+            "calctype" : 0
         }
       }
     """)
@@ -274,6 +313,35 @@ class BulkCalculationRequestSpec extends PlaySpec with GuiceOneAppPerSuite {
 
       val request = jsonCalculationRequestWithValidationError.as[ProcessReadyCalculationRequest]
       request.hasErrors must be(true)
+    }
+
+    "read validation error rows even when the valid request contains an invalid nino" in {
+
+      val request = jsonCalculationRequestWithInvalidNinoAndValidationError.as[CalculationRequest]
+
+      request.validCalculationRequest mustBe None
+      request.validationErrors mustBe Some(Map(RequestFieldKey.NINO.toString -> "National Insurance number must be valid"))
+      (request.rawCalculationRequest.get \ "scon").as[String] mustBe "S2730000B"
+      (request.rawCalculationRequest.get \ "nino").as[String] mustBe "QQ000000A"
+      (request.rawCalculationRequest.get \ "firstForename").as[String] mustBe "Cliff"
+      (request.rawCalculationRequest.get \ "surname").as[String] mustBe "Richard-Smith"
+    }
+
+    "read process ready validation error rows even when the valid request contains an invalid nino" in {
+
+      val request = jsonCalculationRequestWithInvalidNinoAndValidationError.as[ProcessReadyCalculationRequest]
+
+      request.validCalculationRequest mustBe None
+      request.validationErrors mustBe Some(Map(RequestFieldKey.NINO.toString -> "National Insurance number must be valid"))
+      (request.rawCalculationRequest.get \ "scon").as[String] mustBe "S2730000B"
+      (request.rawCalculationRequest.get \ "nino").as[String] mustBe "QQ000000A"
+      (request.rawCalculationRequest.get \ "firstForename").as[String] mustBe "Cliff"
+      (request.rawCalculationRequest.get \ "surname").as[String] mustBe "Richard-Smith"
+    }
+
+    "reject invalid nino rows when no validation errors are present" in {
+
+      jsonCalculationRequestWithInvalidNinoAndNoValidationError.validate[CalculationRequest].isError mustBe true
     }
 
     "return false if no globalErrorCode or validation error" in {

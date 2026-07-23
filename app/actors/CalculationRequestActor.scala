@@ -55,7 +55,7 @@ class CalculationRequestActor extends Actor with ActorUtils with Logging {
         else if appConfig.isHipEnabled then "HIP"
         else "DES"
 
-      val processingFuture = desConnector.getPersonDetails(request.validCalculationRequest.get.nino).flatMap {
+      val processingFuture = desConnector.getPersonDetails(request.validCalculationRequest.get.nino.value).flatMap {
         case DesGetHiddenRecordResponse =>
           // Handle hidden record case
           Future.successful(GmpBulkCalculationResponse(List(), LOCKED, None, None, None, containsErrors = true))

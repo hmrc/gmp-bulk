@@ -155,7 +155,7 @@ class DesConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite wi
         s"return a BreakerException exception when $errorCode returned from DES" in new SUT {
           val request = ValidCalculationRequest("S1401234Q", RandomNino.generate, "Smith", "Bill", None, None, None, None, None, None)
 
-          val url = s"""/pensions/individuals/gmp/scon/S/1401234/Q/nino/${request.nino.toUpperCase}/surname/SMI/firstname/B/calculation/"""
+          val url = s"""/pensions/individuals/gmp/scon/S/1401234/Q/nino/${request.nino.value}/surname/SMI/firstname/B/calculation/"""
           stubServiceGet(url, errorCode, "", "request_earnings" -> "1")
 
           intercept[BreakerException] {
@@ -169,7 +169,7 @@ class DesConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite wi
         s"return a UpstreamErrorResponse exception when $errorCode returned from DES" in new SUT {
           val request = ValidCalculationRequest("S1401234Q", RandomNino.generate, "Smith", "Bill", None, None, None, None, None, None)
 
-          val url = s"""/pensions/individuals/gmp/scon/S/1401234/Q/nino/${request.nino.toUpperCase}/surname/SMI/firstname/B/calculation/"""
+          val url = s"""/pensions/individuals/gmp/scon/S/1401234/Q/nino/${request.nino.value}/surname/SMI/firstname/B/calculation/"""
           stubServiceGet(url, errorCode, "", "request_earnings" -> "1")
 
           intercept[UpstreamErrorResponse] {
@@ -205,17 +205,17 @@ class DesConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite wi
 
       for (status, body, expected) <- getPersonDetailTestScenarios do
         s"return a ${expected.getClass.toString} when status from DES is $status" in new SUT {
-          val url = s"/citizen-details/$nino/etag"
+          val url = s"/citizen-details/${nino.value}/etag"
           stubServiceGet(url, status, body)
 
-          await(getPersonDetails(nino)) must be(expected)
+          await(getPersonDetails(nino.value)) must be(expected)
         }
 
       s"hit metrics mciLockResult when status from DES is 423" in new SUT {
-        val url = s"/citizen-details/$nino/etag"
+        val url = s"/citizen-details/${nino.value}/etag"
         stubServiceGet(url, LOCKED, citizenDetailsJson)
 
-        await(getPersonDetails(nino))
+        await(getPersonDetails(nino.value))
         Mockito.verify(mockMetrics).mciLockResult()
       }
 
@@ -225,14 +225,14 @@ class DesConnectorSpec extends HttpClientV2Helper with GuiceOneServerPerSuite wi
           Future.failed(ex)
         }
 
-        await(getPersonDetails(nino)) must be(DesGetErrorResponse(ex))
+        await(getPersonDetails(nino.value)) must be(DesGetErrorResponse(ex))
       }
 
       "return a success response if the MCI flag does not appear in the response" in new SUT {
-        val url = s"/citizen-details/$nino/etag"
+        val url = s"/citizen-details/${nino.value}/etag"
         stubServiceGet(url, OK, "{}")
 
-        await(getPersonDetails(nino)) must be(DesGetSuccessResponse)
+        await(getPersonDetails(nino.value)) must be(DesGetSuccessResponse)
       }
     }
   }

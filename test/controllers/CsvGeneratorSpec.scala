@@ -18,6 +18,7 @@ package controllers
 
 import helpers.RandomNino
 import models.*
+import uk.gov.hmrc.domain.Nino
 
 import java.time.{LocalDate, LocalDateTime}
 import org.mockito.Mockito.*
@@ -25,6 +26,7 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.play.PlaySpec
 import play.api.i18n.MessagesImpl
+import play.api.libs.json.Json
 import play.api.test.Helpers.stubMessagesControllerComponents
 import play.api.i18n.{Lang, Messages, MessagesApi}
 import play.api.test.Helpers.stubMessagesApi
@@ -159,7 +161,8 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSug
 
     "not include dual calc values if dual calcs are not requested" in {
 
-      val validCalculationRequest = ValidCalculationRequest("S2730000B", "BH000007A", "Smith", "John", Some("ref1"), Some(0), None, None, None, None)
+      val validCalculationRequest =
+        ValidCalculationRequest("S2730000B", Nino("BH000007A"), "Smith", "John", Some("ref1"), Some(0), None, None, None, None)
 
       val gmpBulkCalculationResponse = GmpBulkCalculationResponse(
         List(
@@ -183,7 +186,7 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSug
     "getCalculationsAsCsv when revaluation with different rates" must {
 
       val validCalculationRequest =
-        ValidCalculationRequest("S2730000B", "BH000007A", "Smith", "John", Some("ref1"), Some(1), None, Some(0), None, None)
+        ValidCalculationRequest("S2730000B", Nino("BH000007A"), "Smith", "John", Some("ref1"), Some(1), None, Some(0), None, None)
 
       val gmpBulkCalculationResponse = GmpBulkCalculationResponse(
         List(
@@ -324,7 +327,8 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSug
         None
       )
 
-      val validCalculationRequest = ValidCalculationRequest("S2730000B", nino, "Smith", "John", Some("ref1"), Some(0), None, None, Some(1), None)
+      val validCalculationRequest =
+        ValidCalculationRequest("S2730000B", nino, "Smith", "John", Some("ref1"), Some(0), None, None, Some(1), None)
       val calculationRequests    = List(ProcessReadyCalculationRequest("1", 1, Some(validCalculationRequest), None, Some(gmpBulkCalculationResponse)))
       val bulkCalculationRequest =
         ProcessedBulkCalculationRequest("1", "abcd", "mail@mail.com", "reference1", calculationRequests, "userId", LocalDateTime.now, true, 1, 0)
@@ -535,6 +539,75 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSug
       result must include("The line is empty")
     }
 
+    "contain field validation errors when the valid request is not available in all results" in {
+      val errors      = Map(RequestFieldKey.NINO.toString -> "Enter member's National Insurance number in the correct format")
+      val requests    = List(ProcessReadyCalculationRequest("1", 1, None, Some(errors), None))
+      val bulkRequest = ProcessedBulkCalculationRequest("1", "ref1", "mail@mail.com", "ref1", requests, "userId", LocalDateTime.now, true, 0, 1)
+
+      val result = TestCsvGenerator.generateCsv(bulkRequest, Some(CsvFilter.All))
+
+      result must include("gmp.error,,Enter member's National Insurance number in the correct format")
+    }
+
+    "contain field validation errors when the valid request is not available in failed results" in {
+      val errors      = Map(RequestFieldKey.NINO.toString -> "Enter member's National Insurance number in the correct format")
+      val requests    = List(ProcessReadyCalculationRequest("1", 1, None, Some(errors), None))
+      val bulkRequest = ProcessedBulkCalculationRequest("1", "ref1", "mail@mail.com", "ref1", requests, "userId", LocalDateTime.now, true, 0, 1)
+
+      val result = TestCsvGenerator.generateCsv(bulkRequest, Some(CsvFilter.Failed))
+
+      result must include(",Enter member's National Insurance number in the correct format")
+    }
+
+    "retain validation row values for invalid nino validation rows" in {
+      val errors                = Map(RequestFieldKey.NINO.toString -> "Enter member's National Insurance number in the correct format")
+      val rawCalculationRequest = Json.obj(
+        "scon"            -> "S2730000B",
+        "nino"            -> "QQ000000A",
+        "firstForename"   -> "BOB",
+        "surname"         -> "JONES",
+        "memberReference" -> "E2E03",
+        "calctype"        -> 2,
+        "revaluationRate" -> 0,
+        "dualCalc"        -> 0
+      )
+      val requests    = List(ProcessReadyCalculationRequest("1", 1, None, Some(errors), None, rawCalculationRequest = Some(rawCalculationRequest)))
+      val bulkRequest = ProcessedBulkCalculationRequest("1", "ref1", "mail@mail.com", "ref1", requests, "userId", LocalDateTime.now, true, 0, 1)
+
+      val result = TestCsvGenerator.generateCsv(bulkRequest, Some(CsvFilter.All))
+
+      result must include(
+        "gmp.error,S2730000B,Enter member's National Insurance number in the correct format,BOB,JONES,E2E03,gmp.calc_type.payable_age,,,HMRC,"
+      )
+    }
+
+    "show validation errors for invalid raw calculation request values" in {
+      val errors = Map(
+        RequestFieldKey.DATE_OF_LEAVING.toString  -> "Enter a real leaving date",
+        RequestFieldKey.REVALUATION_RATE.toString -> "Enter a valid revaluation rate"
+      )
+      val rawCalculationRequest = Json.obj(
+        "scon"            -> "S2730000B",
+        "nino"            -> "AA000004A",
+        "firstForename"   -> "SARAH-JANE",
+        "surname"         -> "BILLING",
+        "memberReference" -> "E2E05",
+        "calctype"        -> 1,
+        "terminationDate" -> "not-a-date",
+        "revaluationDate" -> "2016-05-03",
+        "revaluationRate" -> "not-a-rate",
+        "dualCalc"        -> 0
+      )
+      val requests    = List(ProcessReadyCalculationRequest("1", 1, None, Some(errors), None, rawCalculationRequest = Some(rawCalculationRequest)))
+      val bulkRequest = ProcessedBulkCalculationRequest("1", "ref1", "mail@mail.com", "ref1", requests, "userId", LocalDateTime.now, true, 0, 1)
+
+      val result = TestCsvGenerator.generateCsv(bulkRequest, Some(CsvFilter.All))
+
+      result must include(
+        "gmp.error,S2730000B,AA000004A,SARAH-JANE,BILLING,E2E05,gmp.calc_type.specific_date,Enter a real leaving date,03/05/2016,Enter a valid revaluation rate,"
+      )
+    }
+
     "insert an empty reval rate when member in scheme, and calc type is Survivor" in {
 
       val bulkRequest = mock[ProcessedBulkCalculationRequest]
@@ -643,7 +716,19 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSug
       )
 
       val validCalc =
-        ValidCalculationRequest("S2730000B", nino, "Smith", "John", Some("ref1"), Some(3), Some("2018-05-10"), None, None, Some("2016-08-24"), None)
+        ValidCalculationRequest(
+          "S2730000B",
+          nino,
+          "Smith",
+          "John",
+          Some("ref1"),
+          Some(3),
+          Some("2018-05-10"),
+          None,
+          None,
+          Some("2016-08-24"),
+          None
+        )
 
       val messagesApi: MessagesApi = stubMessagesApi()
       given Messages = messagesApi.preferred(Seq(Lang.defaultLang))
@@ -712,6 +797,75 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSug
 
     }
 
+    "include rows without contribution periods in contributions csv" in {
+      val responseWithContributions = singlePeriodGmpBulkCalculationResponse.copy(calculationPeriods =
+        List(
+          CalculationPeriod(
+            Some(LocalDate.of(1983, 3, 7)),
+            LocalDate.of(2016, 7, 7),
+            "3.12",
+            "1.23",
+            0,
+            0,
+            None,
+            None,
+            None,
+            None,
+            Some(List(ContributionsAndEarnings(1983, "100.00")))
+          )
+        )
+      )
+      val calculationRequests = List(
+        ProcessReadyCalculationRequest(
+          "1",
+          1,
+          Some(validCalculationRequest.copy(memberReference = Some("with-conts"))),
+          None,
+          Some(responseWithContributions)
+        ),
+        ProcessReadyCalculationRequest("1", 2, Some(validCalculationRequest.copy(memberReference = Some("no-response"))), None, None),
+        ProcessReadyCalculationRequest(
+          "1",
+          3,
+          Some(validCalculationRequest.copy(memberReference = Some("validation-error"))),
+          Some(Map(RequestFieldKey.NINO.toString -> "NINO error")),
+          None
+        )
+      )
+      val bulkRequest = bulkCalculationRequestSingle.copy(calculationRequests = calculationRequests)
+
+      val result = TestCsvGenerator.generateContributionsCsv(bulkRequest)
+
+      result must include("S2730000B")
+      result must include("100.00")
+      result.split("\n").count(_ == s"S2730000B,$nino,John,Smith,") mustBe 2
+      result.split("\n").length mustBe 4
+    }
+
+    "include validation rows in contributions csv when the valid request is not available" in {
+      val rawCalculationRequest = Json.obj(
+        "scon"          -> "S2730000B",
+        "nino"          -> "QQ000000A",
+        "firstForename" -> "BOB",
+        "surname"       -> "JONES"
+      )
+      val calculationRequests = List(
+        ProcessReadyCalculationRequest(
+          "1",
+          1,
+          None,
+          Some(Map(RequestFieldKey.NINO.toString -> "NINO error")),
+          None,
+          rawCalculationRequest = Some(rawCalculationRequest)
+        )
+      )
+      val bulkRequest = bulkCalculationRequestSingle.copy(calculationRequests = calculationRequests)
+
+      val result = TestCsvGenerator.generateContributionsCsv(bulkRequest)
+
+      result must include("S2730000B,QQ000000A,BOB,JONES,")
+    }
+
     "add 8 commas when calculation error exists" in {
 
       val expectedResult =
@@ -737,7 +891,7 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSug
         s"gmp.success,S2730000B,$nino,John,Smith,ref1,gmp.calc_type.specific_date,$date,$date,,gmp.generic.no,3.12,1.23,,,07/03/1983,$date,3.12,1.23,,,,,,,"
       val validCalcRequest = ValidCalculationRequest(
         "S2730000B",
-        s"$nino",
+        nino,
         "Smith",
         "John",
         Some("ref1"),
@@ -771,7 +925,7 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSug
         s"gmp.success,S2730000B,$nino,John,Smith,ref1,gmp.calc_type.specific_date,$date,$date,,gmp.generic.no,3.12,1.23,,,07/03/1983,$date,3.12,1.23,,,,,,,"
       val validCalcRequest = ValidCalculationRequest(
         "S2730000B",
-        s"$nino",
+        nino,
         "Smith",
         "John",
         Some("ref1"),
@@ -806,7 +960,7 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSug
         s"gmp.success,S2730000B,$nino,John,Smith,ref1,gmp.calc_type.specific_date,$date,${yesterdaysDate.format(DateTimeFormatter.ofPattern(DEFAULT_DATE_FORMAT))},,gmp.generic.no,3.12,1.23,,,07/03/1983,${yesterdaysDate.format(DateTimeFormatter.ofPattern(DEFAULT_DATE_FORMAT))},3.12,1.23,,,,,,,"
       val validCalcRequest = ValidCalculationRequest(
         "S2730000B",
-        s"$nino",
+        nino,
         "Smith",
         "John",
         Some("ref1"),
@@ -840,7 +994,7 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSug
         s"gmp.success,S2730000B,$nino,John,Smith,ref1,gmp.calc_type.specific_date,03/03/2017,01/01/2017,,gmp.generic.no,3.12,1.23,,,07/03/1983,03/03/2017,3.12,1.23,,,,,,,"
       val validCalcRequest = ValidCalculationRequest(
         "S2730000B",
-        s"$nino",
+        nino,
         "Smith",
         "John",
         Some("ref1"),
@@ -886,7 +1040,7 @@ class CsvGeneratorSpec extends PlaySpec with GuiceOneAppPerSuite with MockitoSug
         s"gmp.success,S2730000B,BH000002A,HARRY,STYLES,E2E06,gmp.calc_type.specific_date,12/10/2016,03/01/2017,,gmp.generic.yes,17.70,9.91,6.93,7.79,07/03/1983,12/10/2016,17.70,9.91,6.93,7.79,,,,,"
       val validCalcRequest = ValidCalculationRequest(
         "S2730000B",
-        "BH000002A",
+        Nino("BH000002A"),
         "STYLES",
         "HARRY",
         Some("E2E06"),
